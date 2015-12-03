@@ -261,7 +261,14 @@ class WoodWing7 extends Post {
             continue;
           }
           if (FALSE !== strpos($style, 'überschrift') || FALSE !== strpos($style, 'kurzmeldung')) {
-            $this->post_title = $this->ensureSingleLine($innerhtml);
+            // The title/heading may be split into two consecutive paragraphs.
+            if (!isset($this->post_title)) {
+              $this->post_title = '';
+            }
+            elseif (!empty($this->post_title)) {
+              $this->post_title .= ' ';
+            }
+            $this->post_title .= $this->ensureSingleLine($innerhtml);
             continue;
           }
           elseif (FALSE !== strpos($style, 'unterzeile')) {
