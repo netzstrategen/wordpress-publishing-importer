@@ -1,0 +1,32 @@
+{
+  "db": {
+    "publisher": "der-bote",
+    "system": "woodwing",
+    "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\WoodWing7",
+    "importDirectories": {
+      "articles": "../ftp/db/new",
+      "media": "../ftp/db/new"
+    },
+    "uploadsPrefix": "db-"
+  },
+  "hz": {
+    "publisher": "hersbrucker-zeitung",
+    "system": "redweb",
+    "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\RedWeb",
+    "importDirectories": {
+      "articles": "../ftp/hz/new",
+      "media": "../ftp/hz/new"
+    },
+    "uploadsPrefix": "hz-"
+  },
+  "pz": {
+    "publisher": "pegnitz-zeitung",
+    "system": "woodwing",
+    "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\WoodWing7",
+    "importDirectories": {
+      "articles": "../ftp/pz/new",
+      "media": "../ftp/pz/new"
+    },
+    "uploadsPrefix": "pz-"
+  }
+}
