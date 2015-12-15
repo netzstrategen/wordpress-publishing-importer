@@ -1,12 +1,13 @@
 {
-  "db": {
+  "ge": {
     "publisher": "grenzecho",
     "system": "dialog",
     "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dialog4",
     "importDirectories": {
       "articles": "../ftp",
-      "media": "../ftp"
+      "media": "../ftp/media"
     },
-    "uploadsPrefix": "ge-"
+    "uploadsPrefix": "ge-",
+    "defaultAuthor": "jwetzels"
   }
 }

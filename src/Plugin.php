@@ -86,38 +86,35 @@ class Plugin {
       $config = [$only_publisher_id => $config[$only_publisher_id]];
     }
 
-    // @todo Implement HZ.
-    unset($config['hz']);
-
     foreach ($config as $publisher_config) {
       $extension = '.' . $publisher_config['parserClass']::FILE_EXTENSION;
       if ($only_article_filename) {
-        static::importOne($publisher_config, $publisher_config['importDirectories']['articles'] . '/' . $only_article_filename, (int) basename($only_article_filename, $extension));
+        static::importOne($publisher_config, $publisher_config['importDirectories']['articles'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
         break;
       }
       $glob = $publisher_config['importDirectories']['articles'] . '/*' . $extension;
       $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
       foreach ($git as $pathname => $fileinfo) {
-        static::importOne($publisher_config, $pathname, (int) $fileinfo->getBasename($extension));
+        static::importOne($publisher_config, $pathname, $fileinfo->getBasename($extension));
       }
     }
   }
 
-  public static function importOne($publisher_config, $pathname, $external_id) {
+  public static function importOne($publisher_config, $pathname, $raw_filename) {
     try {
-      $post = $publisher_config['parserClass']::createFromFile($publisher_config, $pathname, $external_id);
+      $post = $publisher_config['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
       if ($post->isPristine()) {
         if ($post->isRawDifferent()) {
           $post->parse();
           $post->save();
-          echo "Processed article $external_id (ID $post->ID).", "\n";
+          echo "Processed article $raw_filename (ID $post->ID).", "\n";
         }
         else {
-          echo "Article $external_id (ID $post->ID) is same as original.", "\n";
+          echo "Article $raw_filename (ID $post->ID) is same as original.", "\n";
         }
       }
       else {
-        echo "Article $external_id (ID $post->ID) has been manually edited.", "\n";
+        echo "Article $raw_filename (ID $post->ID) has been manually edited.", "\n";
       }
     }
     catch (\Exception $e) {

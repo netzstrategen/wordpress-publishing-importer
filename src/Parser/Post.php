@@ -47,14 +47,14 @@ abstract class Post {
    *
    * @var array
    */
-  protected $taxonomies = [];
+  public $taxonomies = [];
 
   /**
    * Post meta data to save for the post.
    *
    * @var array
    */
-  protected $meta = [];
+  public $meta = [];
 
   /**
    * Attachments to save (and embed) for the post, keyed by filename.
@@ -64,23 +64,11 @@ abstract class Post {
   protected $files = [];
 
   /**
-   * The last discovered filename.
+   * Filename (without extension) of the original serialized import file.
    *
    * @var string
    */
-  protected $lastFilename;
-
-  /**
-   * Image captions for attachments in $files.
-   *
-   * Each item is an associative array with the following keys:
-   * - 'caption': The parsed image caption.
-   * - 'credit': (optional) The parsed image author/photograph, if any.
-   * - 'lastFilename': (optional) The last discovered filename, if any.
-   *
-   * @var array
-   */
-  protected $captions = [];
+  protected $rawFilename;
 
   /**
    * The original serialized import file content.
@@ -96,19 +84,23 @@ abstract class Post {
    *   The publishing importer configuration applicable for the post to import.
    * @param string $pathname
    *   The import file pathname.
-   * @param int $external_id
-   *   (optional) The external publishing system ID of the post to import.
+   * @param string $raw_filename
+   *   (optional) Filename (without extension) of the original serialized import file.
    *
    * @return static
    */
-  public static function createFromFile(array $config, $pathname, $external_id = NULL) {
+  public static function createFromFile(array $config, $pathname, $raw_filename = NULL) {
     global $wpdb;
     $raw = static::readFile($pathname);
     $wp_post = [];
-    if ($external_id) {
-      $wp_post = static::loadByGuid('http://' . $config['publisher'] . '/' . $config['system'] . '/' . $external_id) ?: [];
+    if ($raw_filename !== NULL) {
+      $wp_post = static::loadByGuid('http://' . $config['publisher'] . '/' . $config['system'] . '/' . $raw_filename) ?: [];
     }
-    return new static($config, $wp_post, $raw);
+    $post = new static($config, $wp_post, $raw);
+    if ($raw_filename !== NULL) {
+      $post->rawFilename = $raw_filename;
+    }
+    return $post;
   }
 
   protected static function readFile($pathname) {
@@ -136,7 +128,9 @@ abstract class Post {
     if (empty($wp_post->ID)) {
       throw new \InvalidArgumentException("Post ID cannot be empty.");
     }
-    return new static($config, $wp_post, get_post_meta($wp_post->ID, '_publishing_importer_raw', TRUE) ?: NULL);
+    $post = new static($config, $wp_post, get_post_meta($wp_post->ID, '_publishing_importer_raw', TRUE) ?: NULL);
+    $post->rawFilename = get_post_meta($post->ID, '_publishing_importer_id', TRUE);
+    return $post;
   }
 
   /**
@@ -412,7 +406,7 @@ abstract class Post {
   }
 
   public function render() {
-    $this->wp_post->ID = (int) $this->meta['_publishing_importer_article_id'];
+    $this->wp_post->ID = (int) $this->meta['_publishing_importer_id'];
     #$this->wp_post->ID = 1;
     $this->wp_post->post_name = 'dummy';
     $this->wp_post->filter = 'raw';

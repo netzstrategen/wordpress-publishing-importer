@@ -14,6 +14,25 @@ class WoodWing7 extends Post {
 
   const FILE_EXTENSION = 'xml';
 
+  /**
+   * The last discovered filename.
+   *
+   * @var string
+   */
+  protected $lastFilename;
+
+  /**
+   * Image captions for attachments in $files.
+   *
+   * Each item is an associative array with the following keys:
+   * - 'caption': The parsed image caption.
+   * - 'credit': (optional) The parsed image author/photograph, if any.
+   * - 'lastFilename': (optional) The last discovered filename, if any.
+   *
+   * @var array
+   */
+  protected $captions = [];
+
   protected static function readFile($pathname) {
     $raw = parent::readFile($pathname);
     // Some WoodWing XML files happen to be *partially* double-encoded in UTF-8;
@@ -96,7 +115,7 @@ class WoodWing7 extends Post {
 
     $article_id = (string) $xml->xpath('//metadata[@name="ArticleId"]')[0]['value'];
     $this->guid = 'http://' . $this->config['publisher'] . '/' . $this->config['system'] . '/' . $article_id;
-    $this->meta['_publishing_importer_article_id'] = $article_id;
+    $this->meta['_publishing_importer_id'] = $article_id;
 
     // @todo Possible Type strings?
     $map_types = [
