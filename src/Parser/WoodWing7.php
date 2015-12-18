@@ -37,6 +37,9 @@ class WoodWing7 extends Post {
     $this->parseMeta($xml);
 
     // Process content.
+    // Ensure to reset all properties that are collected/stacked up and which
+    // may already exist on the WP_Post object when updating an existing post.
+    $this->post_title = '';
     $this->post_content = $this->parseContent($xml->articlelist->article->body);
 
     // Process image captions.
