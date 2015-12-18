@@ -126,8 +126,7 @@ class WoodWing7 extends Post {
     $status = (string) $xml->xpath('//metadata[@name="Status"]')[0]['value'];
     $this->post_status = isset($map_status[$status]) ? $map_status[$status] : 'draft';
 
-    $date = (string) $xml->xpath('//Custom_Publication_Date')[0];
-    if ($date) {
+    if ($status !== 'Artikel online sofort' && $date = (string) $xml->xpath('//Custom_Publication_Date')[0]) {
       // @todo Make assumed publishing time of day ("next morning") configurable?
       $date .= ' 04:00:00';
       $this->post_date = $date;
