@@ -188,9 +188,11 @@ class WoodWing7 extends Post {
       }
     }
 
+/*
     if ($excerpt = (string) $xml->xpath('//CustomMetaData[@name="C_ANREISER"]')[0]) {
       $this->post_excerpt = $excerpt;
     }
+*/
     if ($subtitle = (string) $xml->xpath('//CustomMetaData[@name="C_DACHZEILE"]')[0]) {
       $this->meta['wps_subtitle'] = $this->ensureSingleLine($subtitle);
     }
