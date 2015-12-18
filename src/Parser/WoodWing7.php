@@ -143,6 +143,9 @@ class WoodWing7 extends Post {
     if ('JA' === (string) $xml->xpath('//CustomMetaData[@name="C_PZ"]')[0]) {
       $this->taxonomies['publisher']['pegnitz-zeitung'] = (int) term_exists('pegnitz-zeitung', 'publisher')['term_id'];
     }
+    if (empty($this->taxonomies['publisher']) && $publisher_term = term_exists($this->config['publisher'], 'publisher')) {
+      $this->taxonomies['publisher']['fallback'] = (int) $publisher_term['term_id'];
+    }
 
     if ($category = (string) $xml->xpath('//BasicMetaData_Section_Name')[0]) {
       // Only add category News if no other category was set (see below).
