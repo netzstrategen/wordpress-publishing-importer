@@ -242,8 +242,20 @@ class WoodWing7 extends Post {
       if (isset($element['style'])) {
         $style = mb_strtolower($element['style']);
         // Inline styles.
+        if (FALSE !== strpos($style, '_x51')) {
+          $innerhtml = '<strong>' . $innerhtml . '</strong>';
+        }
         if (FALSE !== strpos($style, 'kursiv')) {
           $innerhtml = '<em>' . $innerhtml . '</em>';
+        }
+        if (FALSE !== strpos($style, '_x53')) {
+          $innerhtml = '<span class="text-uppercase">' . $innerhtml . '</span>';
+        }
+        if (FALSE !== strpos($style, '_x54')) {
+          $innerhtml = '<u>' . $innerhtml . '</u>';
+        }
+        if (FALSE !== strpos($style, '_x55')) {
+          $innerhtml = '<del>' . $innerhtml . '</del>';
         }
         // Block formats.
         if ($name === 'paragraph') {
