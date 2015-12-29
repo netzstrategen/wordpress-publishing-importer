@@ -2,7 +2,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: publishing_importer\n"
-"POT-Creation-Date: 2015-09-27 00:23+0100\n"
+"POT-Creation-Date: 2015-12-29 20:52+0100\n"
 "PO-Revision-Date: 2015-06-18 14:18+0100\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -18,3 +18,32 @@ msgstr ""
 "X-Poedit-SearchPathExcluded-0: .sass-cache\n"
 "X-Poedit-SearchPathExcluded-1: bower_components\n"
 "X-Poedit-SearchPathExcluded-2: node_modules\n"
+
+#: src/Admin.php:29
+msgid "Origin"
+msgstr ""
+
+#: src/Admin.php:31
+msgid "created manually"
+msgstr ""
+
+#: src/Admin.php:35
+msgid "imported"
+msgstr ""
+
+#: src/Admin.php:38
+msgid ":system ID :id"
+msgstr ""
+
+#: src/User.php:26
+msgid "Importer settings"
+msgstr ""
+
+#: src/User.php:29
+msgctxt "Paraph"
+msgid "Author Initials"
+msgstr ""
+
+#: src/User.php:34
+msgid "Enter one paraph (short signature) per line."
+msgstr ""

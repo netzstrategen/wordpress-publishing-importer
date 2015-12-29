@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: publishing_importer\n"
-"POT-Creation-Date: 2015-09-27 00:23+0100\n"
-"PO-Revision-Date: 2015-09-27 00:23+0100\n"
+"POT-Creation-Date: 2015-12-29 20:52+0100\n"
+"PO-Revision-Date: 2015-12-29 21:00+0100\n"
 "Last-Translator: sun <daniel@netzstrategen.com>\n"
 "Language-Team: netzstrategen\n"
 "Language: de_DE\n"
@@ -21,6 +21,35 @@ msgstr ""
 "X-Poedit-SearchPathExcluded-0: .sass-cache\n"
 "X-Poedit-SearchPathExcluded-1: bower_components\n"
 "X-Poedit-SearchPathExcluded-2: node_modules\n"
+
+#: src/Admin.php:29
+msgid "Origin"
+msgstr "Herkunft"
+
+#: src/Admin.php:31
+msgid "created manually"
+msgstr "manuell erstellt"
+
+#: src/Admin.php:35
+msgid "imported"
+msgstr "importiert"
+
+#: src/Admin.php:38
+msgid ":system ID :id"
+msgstr ":system ID :id"
+
+#: src/User.php:26
+msgid "Importer settings"
+msgstr "Importer Einstellungen"
+
+#: src/User.php:29
+msgctxt "Paraph"
+msgid "Author Initials"
+msgstr "Autor Paraphen"
+
+#: src/User.php:34
+msgid "Enter one paraph (short signature) per line."
+msgstr "Eine Paraphe (Initialien) pro Zeile eingeben."
 
 #~ msgid "Test"
 #~ msgstr "Translated Test"

@@ -35,17 +35,14 @@ class Plugin {
   }
 
   /**
-   * Imports new content from filesystem folders.
+   * Returns the plugin configuration.
    *
-   * wp eval --user=system 'Netzstrategen\PublishingImporter\Plugin::importContent();'
-   * wp eval --user=system 'Netzstrategen\PublishingImporter\Plugin::importContent("pz", "123456.xml");'
-   *
-   * @param string $only_publisher_id
-   *   (optional) The publisher ID to import; e.g. 'pz'.
-   * @param string $only_article_filename
-   *   (optional) The article filename to import; e.g. '123456.xml'.
+   * @return array
+   * @throws \Exception if any config.json file cannot be parsed.
+   * @throws \LogicException if any directory or file path specified in the
+   *   configuration does not exist.
    */
-  public static function importContent($only_publisher_id = NULL, $only_article_filename = NULL) {
+  public static function getConfig() {
     // Read configuration.
     $config = json_decode(file_get_contents(static::getBasePath() . '/config.json'), TRUE);
     if ($config === NULL) {
@@ -69,7 +66,22 @@ class Plugin {
         $config[$publisher]['importDirectories'][$name] = $realpath;
       }
     }
+    return $config;
+  }
 
+  /**
+   * Imports new content from filesystem folders.
+   *
+   * wp eval --user=system 'Netzstrategen\PublishingImporter\Plugin::importContent();'
+   * wp eval --user=system 'Netzstrategen\PublishingImporter\Plugin::importContent("pz", "123456.xml");'
+   *
+   * @param string $only_publisher_id
+   *   (optional) The publisher ID to import; e.g. 'pz'.
+   * @param string $only_article_filename
+   *   (optional) The article filename to import; e.g. '123456.xml'.
+   */
+  public static function importContent($only_publisher_id = NULL, $only_article_filename = NULL) {
+    $config = static::getConfig();
     if ($only_publisher_id) {
       $config = [$only_publisher_id => $config[$only_publisher_id]];
     }
