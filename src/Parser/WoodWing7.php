@@ -172,11 +172,18 @@ class WoodWing7 extends Post {
       }
     }
 
+    foreach ($xml->xpath('//CustomMetaData[@name="C_SERIENTHEMA"]') as $post_tag) {
+      $post_tag = (string) $post_tag;
+      // @todo Term ID mapping via termmeta starting with WP 4.4.0.
+      $this->taxonomies['post_tag'][] = $post_tag;
+    }
+/*
     if ($topic = (string) $xml->xpath('//CustomMetaData[@name="C_SERIENTHEMA"]')[0]) {
       if ($term = get_term_by('name', $topic, 'topic')) {
         $this->taxonomies['topic'][$topic] = $term->term_id;
       }
     }
+*/
 
     if ('JA' === (string) $xml->xpath('//CustomMetaData[@name="C_TOPARTIKEL"]')[0]) {
       if ($term = get_term_by('slug', 'top-story', 'category')) {
