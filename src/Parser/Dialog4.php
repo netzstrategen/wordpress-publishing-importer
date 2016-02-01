@@ -69,8 +69,20 @@ class Dialog4 extends Post {
     }
 
     if ($categories = (string) $xml->xpath('//WebStoryHead/DocAttr/@strCatchwords')[0]) {
+      $term_ids = [];
       $categories = array_filter(array_map('trim', explode(';', $categories)));
-      $this->taxonomies['category'] = $categories;
+      $placeholders = implode(',', array_fill(0, count($categories), '%s'));
+      $query = "SELECT t.name, t.term_id
+        FROM {$wpdb->terms} t
+        LEFT JOIN {$wpdb->termmeta} tm ON tm.term_id = t.term_id
+        WHERE t.name IN ($placeholders)
+        OR tm.meta_key = '_publishing_importer_synonyms' AND tm.meta_value IN ($placeholders)
+        GROUP BY t.term_id";
+      $categories = array_merge($categories, $categories);
+      $results = $wpdb->get_results($wpdb->prepare($query, $categories));
+      foreach ($results as $term) {
+        $this->taxonomies['category'][$term->name] = (int) $term->term_id;
+      }
     }
     // Set the default category if no other category could be determined.
     if (empty($this->taxonomies['category'])) {
