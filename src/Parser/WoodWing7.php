@@ -186,9 +186,8 @@ class WoodWing7 extends Post {
     }
     // Default the category to News if no other category could be determined.
     if (empty($this->taxonomies['category'])) {
-      if ($term = get_term_by('slug', 'news', 'category')) {
-        $this->taxonomies['category']['news'] = $term->term_id;
-      }
+      $default_category_id = get_option('default_category');
+      $this->taxonomies['category'][get_the_category_by_ID($default_category_id)] = (int) $default_category_id;
     }
 
     foreach ($xml->xpath('//CustomMetaData[@name="C_SERIENTHEMA"]') as $post_tag) {

@@ -86,7 +86,8 @@ class Dialog4 extends Post {
     }
     // Set the default category if no other category could be determined.
     if (empty($this->taxonomies['category'])) {
-      $this->taxonomies['category'] = [];
+      $default_category_id = get_option('default_category');
+      $this->taxonomies['category'][get_the_category_by_ID($default_category_id)] = (int) $default_category_id;
     }
 
     if ($location = (string) $xml->xpath('//WebStoryHead/DocAttr/@strLocation')[0]) {
