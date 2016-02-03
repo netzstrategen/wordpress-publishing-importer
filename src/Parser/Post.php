@@ -334,7 +334,7 @@ abstract class Post {
       foreach ($this->files as $filename => $file) {
         $i++;
         $orig_filename = $filename;
-        $file += ['caption' => NULL];
+        $file += ['caption' => ''];
         if (!file_exists($dir . '/' . $filename)) {
           // @todo Remove this workaround when DB/PZ are no longer providing
           //   scaled down derivatives instead of original images.
