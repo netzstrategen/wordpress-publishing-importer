@@ -336,14 +336,9 @@ abstract class Post {
         $orig_filename = $filename;
         $file += ['caption' => ''];
         if (!file_exists($dir . '/' . $filename)) {
-          // @todo Remove this workaround when DB/PZ are no longer providing
-          //   scaled down derivatives instead of original images.
-          if (file_exists($dir . '/' . strtr($filename, ['.jpg' => '_New.jpg']))) {
-            $filename = strtr($filename, ['.jpg' => '_New.jpg']);
-          }
           // Try to decode a filename containing hex-encoded characters beyond ASCII.
           // E.g., 'staatsstra_C3_9Fe1.jpg' => 'staatsstraße1.jpg'
-          elseif ($filename !== $encoded_filename = preg_replace('@_([a-z0-9]{2})@i', '%$1', $filename)) {
+          if ($filename !== $encoded_filename = preg_replace('@_([a-z0-9]{2})@i', '%$1', $filename)) {
             $encoded_filename = urldecode($encoded_filename);
             if (DIRECTORY_SEPARATOR === '\\') {
               $encoded_filename = iconv('utf-8', 'cp1252', $encoded_filename);
