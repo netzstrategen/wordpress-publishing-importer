@@ -112,7 +112,7 @@ class Dialog4 extends Post {
               'filename' => $filename,
               'name' => $this->config['uploadsPrefix'] . $filename,
             ];
-            if ($caption = trim((string) $element->TBox)) {
+            if ($caption = trim((string) $element->TBox->p)) {
               if (count($parts = preg_split('@(?<=[\s.!?])\s*(Fotos?|Quelle|Archivfotos?):\s*@', $caption)) > 1) {
                 $caption = $parts[0];
                 $this->files[$filename]['credit'] = $parts[1];
@@ -140,7 +140,11 @@ class Dialog4 extends Post {
         $classes = [];
         $type = mb_strtolower($element['strContentType']);
 
-        if ($type == 'heading') {
+        if ($type === 'author') {
+          continue;
+        }
+
+        if ($type === 'heading') {
           $this->post_title = $this->ensureSingleLine($innerhtml);
           continue;
         }
@@ -160,6 +164,11 @@ class Dialog4 extends Post {
             $tag = 'p';
           }
           $innerhtml = '<' . $tag . $classes . '>' . $innerhtml . '</' . $tag . '>';
+        }
+
+        if ($type === 'teaser') {
+          $this->post_excerpt = ltrim($innerhtml);
+          continue;
         }
       }
       // Sometimes paragraphs contain false leading whitespace.
