@@ -374,6 +374,7 @@ abstract class Post {
           }
         }
         if ($attachment_id) {
+          $image_data = ['ID' => $attachment_id];
           if ($i == 1) {
             set_post_thumbnail($this->ID, $attachment_id);
             $html = '';
@@ -385,6 +386,10 @@ abstract class Post {
           if (!empty($file['credit'])) {
             update_post_meta($attachment_id, 'credit', $file['credit']);
           }
+          if (!empty($file['caption'])) {
+            $image_data['post_excerpt'] = $file['caption'];
+          }
+          wp_update_post($image_data);
           // Additionally trim to remove leading whitespace before text content;
           // i.e., after removing placeholder for post thumbnail/featured image.
           $this->post_content = trim(strtr($this->post_content, ["<!-- $orig_filename -->" => $html])) . "\n";
