@@ -351,7 +351,17 @@ class WoodWing7 extends Post {
     global $wpdb;
 
     // Check for an exact match of display names of administrators, editors, authors.
-    if ($user_id = $this->getUserIdFromAuthorInContent($this->post_content)) {
+    if (!isset(static::$all_authors)) {
+      $result = $wpdb->get_results("SELECT u.ID, u.display_name FROM {$wpdb->users} u INNER JOIN {$wpdb->usermeta} um ON um.user_id = u.ID WHERE um.meta_key = 'wp_capabilities' AND meta_value REGEXP 'administrator|editor|author'", ARRAY_A);
+      array_map(function ($row) {
+        static::$all_authors[$row['display_name']] = (int) $row['ID'];
+      }, $result);
+    }
+    preg_match('@\b' . implode('\b|\b', array_keys(static::$all_authors)) . '\b@', $this->post_content, $matches);
+    if (isset($matches[0])) {
+      // Remove matching author name from content, so it does not appear twice.
+      $this->post_content = str_replace($matches[0], '', $this->post_content);
+      $user_id = static::$all_authors[$matches[0]];
     }
     // Check for a paraph at the end of the article (not necessarily end of
     // document, due to possibly embedded images below the text).

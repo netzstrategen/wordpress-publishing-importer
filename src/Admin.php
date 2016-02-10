@@ -16,7 +16,7 @@ class Admin {
    * @implements admin_init
    */
   public static function init() {
-    User::admin_init();
+    // User::admin_init();
     Term::admin_init();
     add_action('post_submitbox_misc_actions', __CLASS__ . '::outputPostOriginByGuid', 9);
   }

@@ -54,7 +54,7 @@ class Dialog4 extends Post {
 
     // Check for explicitly specified author name.
     // @see static::parseAuthor()
-    if ($author_name = (string) $xml->xpath('//DialogDoc/WebStory/WebStoryHead/DocAttr/@strAuthor')[0]) {
+    if ($author_name = (string) $xml->xpath('//TBox[@strContentType="Author"]/p')[0]) {
       // Strip leading 'von' delivered by GrenzEcho XMLs to get correct author name.
       $author_name = preg_replace('/^von +/i', '', $author_name);
       // Save the value for literal output in frontend.
@@ -144,6 +144,8 @@ class Dialog4 extends Post {
         $type = mb_strtolower($element['strContentType']);
 
         if ($type === 'author') {
+          // Strip leading 'von' delivered by GrenzEcho XMLs to get correct author name.
+          $this->meta['author'] = $this->ensureSingleLine(preg_replace('/^von +/i', '', $innerhtml));
           continue;
         }
 
@@ -187,10 +189,17 @@ class Dialog4 extends Post {
     global $wpdb;
 
     // Check for an exact match of display names of administrators, editors, authors.
-    $user_id = $this->getUserIdFromAuthorInContent($this->post_content);
-    if (!empty($user_id)) {
-      return $user_id;
+    if (!isset(static::$all_authors)) {
+      $result = $wpdb->get_results("SELECT u.ID, u.display_name FROM {$wpdb->users} u INNER JOIN {$wpdb->usermeta} um ON um.user_id = u.ID WHERE um.meta_key = 'wp_capabilities' AND meta_value REGEXP 'administrator|editor|author'", ARRAY_A);
+      array_map(function ($row) {
+        static::$all_authors[$row['display_name']] = (int) $row['ID'];
+      }, $result);
     }
+    preg_match('@\b' . implode('\b|\b', array_keys(static::$all_authors)) . '\b@', $this->meta['author'], $matches);
+    if (isset($matches[0])) {
+      return static::$all_authors[$matches[0]];
+    }
+
     return username_exists($this->config['defaultAuthor']);
   }
 

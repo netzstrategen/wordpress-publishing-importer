@@ -426,32 +426,6 @@ abstract class Post {
 //    load_template($template, FALSE);
   }
 
-  /**
-   * Attempts to match a user's display name within the post content.
-   *
-   * Recognized roles: administrator, editor, author
-   *
-   * @return int|null
-   *   The ID of the matching user. The author name is additionally removed from
-   *   $wp_post->post_content.
-   */
-  public function getUserIdFromAuthorInContent() {
-    global $wpdb;
-    if (!isset(static::$all_authors)) {
-      $result = $wpdb->get_results("SELECT u.ID, u.display_name FROM {$wpdb->users} u INNER JOIN {$wpdb->usermeta} um ON um.user_id = u.ID WHERE um.meta_key = 'wp_capabilities' AND meta_value REGEXP 'administrator|editor|author'", ARRAY_A);
-      array_map(function ($row) {
-        static::$all_authors[$row['display_name']] = (int) $row['ID'];
-      }, $result);
-    }
-    preg_match('@\b' . implode('\b|\b', array_keys(static::$all_authors)) . '\b@', $this->post_content, $matches);
-    if (isset($matches[0])) {
-      // Remove matching author name from content, so it does not appear twice.
-      $this->post_content = str_replace($matches[0], '', $this->post_content);
-
-      return static::$all_authors[$matches[0]];
-    }
-  }
-
   public static function exitXML($raw) {
     header('Content-Type: text/xml; charset=utf-8');
     echo $raw;
