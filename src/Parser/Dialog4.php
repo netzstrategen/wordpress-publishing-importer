@@ -45,6 +45,9 @@ class Dialog4 extends Post {
       $ident->kId,
       preg_replace('@[^0-9A-Za-z_]+@', '_', remove_accents((string) $ident->strName)),
     ]);
+    // While Dialog allows 56 characters for filenames only, we need to trim it
+    //   to ensure some posts won't be processed again.
+    $article_id = substr($article_id, 0, 56);
     $this->guid = 'http://' . $this->config['publisher'] . '/' . $this->config['system'] . '/' . $article_id;
     $this->meta['_publishing_importer_id'] = $article_id;
     $this->meta['_publishing_importer_uuid'] = (string) $xml->xpath('//WebStoryHead/OrigId/@strDocId')[0];
