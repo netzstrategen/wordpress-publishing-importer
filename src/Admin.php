@@ -24,17 +24,16 @@ class Admin {
   /**
    * @implements post_submitbox_misc_actions
    */
-  public static function outputPostOriginByGuid() {
-    $post = get_post();
-
+  public static function outputPostOriginByGuid($post) {
     $label = __('Origin', Plugin::L10N);
-    if (strpos($post->guid, '?p=') !== FALSE) {
+    $guid = html_entity_decode($post->guid);
+    if (preg_match('@[?&]p=\d+@', $guid)) {
       $value = __('created manually', Plugin::L10N);
       $details = '';
     }
     else {
       $value = __('imported', Plugin::L10N);
-      $parts = parse_url($post->guid);
+      $parts = parse_url($guid);
       $publisher = esc_html($parts['host']);
       $details = strtr(__(':system ID :id', Plugin::L10N), [
         ':system' => esc_html(trim(dirname($parts['path']), '/')),
