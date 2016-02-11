@@ -106,7 +106,9 @@ class Dialog4 extends Post {
 
   public function parseContent(\SimpleXMLElement $content) {
     $html = '';
-    $style_classes = [];
+    $style_classes = [
+      'vorspann' => 'intro',
+    ];
     foreach ($content as $name => $element) {
       if ($name === 'PicBox') {
         if ($filename = (string) basename(str_replace('\\', '/', $element->Image['strPathName']))) {
@@ -140,8 +142,9 @@ class Dialog4 extends Post {
       }
       if ($name === 'TBox') {
         $tag = '';
+        $classes = [];
         $type = mb_strtolower($element['strContentType']);
-        $classes = [$type];
+        $style = mb_strtolower($element['strBoxName']);
 
         if ($type === 'author') {
           // Strip leading 'von' delivered by GrenzEcho XMLs to get correct author name.
