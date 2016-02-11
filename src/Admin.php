@@ -25,6 +25,9 @@ class Admin {
    * @implements post_submitbox_misc_actions
    */
   public static function outputPostOriginByGuid($post) {
+    if ($post->post_type !== 'post') {
+      return;
+    }
     $label = __('Origin', Plugin::L10N);
     $guid = html_entity_decode($post->guid);
     if (preg_match('@[?&]p=\d+@', $guid)) {
