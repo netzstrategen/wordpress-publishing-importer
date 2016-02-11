@@ -140,8 +140,8 @@ class Dialog4 extends Post {
       }
       if ($name === 'TBox') {
         $tag = '';
-        $classes = [];
         $type = mb_strtolower($element['strContentType']);
+        $classes = [$type];
 
         if ($type === 'author') {
           // Strip leading 'von' delivered by GrenzEcho XMLs to get correct author name.
