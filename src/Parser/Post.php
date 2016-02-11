@@ -314,10 +314,6 @@ abstract class Post {
         throw new \RuntimeException('Failed to update post: ' . implode(', ', $result->get_error_messages()));
       }
     }
-    $this->meta['_publishing_importer_raw'] = $this->raw;
-    foreach ($this->meta as $key => $value) {
-      update_post_meta($this->ID, $key, is_string($value) ? wp_slash($value) : $value);
-    }
     foreach ($this->taxonomies as $taxonomy => $terms) {
       //wp_set_post_terms($this->ID, $terms, $taxonomy, FALSE);
       wp_set_object_terms($this->ID, $terms, $taxonomy, FALSE);
@@ -355,6 +351,10 @@ abstract class Post {
         $guid = 'http://' . $this->config['publisher'] . '/' . $this->config['system'] . '/' . $filename;
         if ($attachment = static::loadByGuid($guid)) {
           $attachment_id = $attachment->ID;
+          wp_update_post([
+            'ID' => $attachment_id,
+            'post_excerpt' => !empty($file['caption']) ? $file['caption'] : '',
+          ]);
         }
         elseif (file_exists($dir . '/' . $filename)) {
           // _wp_handle_upload() *moves* $file['tmp_name'] into uploads/$file['name']
@@ -374,25 +374,14 @@ abstract class Post {
           }
         }
         if ($attachment_id) {
-          $image_data = ['ID' => $attachment_id];
-          if ($i == 1) {
-            set_post_thumbnail($this->ID, $attachment_id);
-            $html = '';
-          }
-          else {
-            // @see wp_ajax_send_attachment_to_editor()
-            $html = get_image_send_to_editor($attachment_id, $file['caption'], '', 'none', '', TRUE, 'medium', $file['caption']);
-          }
           if (!empty($file['credit'])) {
             update_post_meta($attachment_id, 'credit', $file['credit']);
           }
-          if (!empty($file['caption'])) {
-            $image_data['post_excerpt'] = $file['caption'];
+          else {
+            delete_post_meta($attachment_id, 'credit');
           }
-          wp_update_post($image_data);
-          // Additionally trim to remove leading whitespace before text content;
-          // i.e., after removing placeholder for post thumbnail/featured image.
-          $this->post_content = trim(strtr($this->post_content, ["<!-- $orig_filename -->" => $html])) . "\n";
+          $file += ['orig_filename' => $orig_filename];
+          $this->insertAttachment($attachment_id, $file, $i);
         }
       }
       // Update post_content to replace/remove image placeholder strings.
@@ -403,7 +392,21 @@ abstract class Post {
         }
       }
     }
+    $this->meta['_publishing_importer_raw'] = $this->raw;
+    foreach ($this->meta as $key => $value) {
+      update_post_meta($this->ID, $key, is_string($value) ? wp_slash($value) : $value);
+    }
   }
+
+  /**
+   * Inserts or associates an attachment with this post.
+   *
+   * @param int $attachment_id
+   *   The post ID of the attachment file.
+   * @param array $file
+   *   Meta data that has been passed to media_handle_sideload().
+   */
+  abstract protected function insertAttachment($attachment_id, array $file, $current_number);
 
   public function render() {
     $this->wp_post->ID = (int) $this->meta['_publishing_importer_id'];

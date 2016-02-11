@@ -28,7 +28,15 @@ class Dialog4 extends Post {
     // Ensure to reset all properties that are collected/stacked up and which
     // may already exist on the WP_Post object when updating an existing post.
     $this->post_title = '';
-    $this->post_content = $this->parseContent($xml->WebStory->WebStoryContent->TextContent);
+    if (isset($xml->WebStory)) {
+      $this->post_content = $this->parseContent($xml->WebStory->WebStoryContent->TextContent);
+    }
+    else {
+      $this->post_title = $this->ensureSingleLine((string) $xml->xpath('//PictureGalleryHead/@strHeading')[0]);
+      $this->post_type = 'gallery';
+      $this->meta['_images'] = 'field_gallery';
+      $this->post_content = $this->parseContent($xml->PictureGallery->PictureGalleryContent);
+    }
 
     if (empty($this->post_author)) {
       $this->post_author = $this->parseAuthor();
@@ -38,7 +46,8 @@ class Dialog4 extends Post {
   public function parseMeta(\SimpleXMLElement $xml) {
     global $wpdb;
 
-    $ident = $xml->xpath('//WebStoryHead/Ident')[0]->attributes();
+    $ident = $xml->xpath('//Ident[parent::WebStoryHead | parent::PictureGalleryHead]')[0]->attributes();
+
     $article_id = implode('_', [
       $ident->kLocationId,
       str_pad($ident->eLogType, 4, '0', STR_PAD_LEFT),
@@ -50,11 +59,11 @@ class Dialog4 extends Post {
     $article_id = substr($article_id, 0, 56);
     $this->guid = 'http://' . $this->config['publisher'] . '/' . $this->config['system'] . '/' . $article_id;
     $this->meta['_publishing_importer_id'] = $article_id;
-    $this->meta['_publishing_importer_uuid'] = (string) $xml->xpath('//WebStoryHead/OrigId/@strDocId')[0];
+    $this->meta['_publishing_importer_uuid'] = (string) $xml->xpath('//OrigId[parent::WebStoryHead | parent::PictureGalleryHead]/@strDocId')[0];
 
     // Check for explicitly specified author name.
     // @see static::parseAuthor()
-    if ($author_name = (string) $xml->xpath('//TBox[@strContentType="Author"]/p')[0]) {
+    if ($author_name = (string) $xml->xpath('//TBox[@strContentType="Author"]/p | //PictureGalleryHead/@strCreatorLoginName')[0]) {
       // Strip leading 'von' delivered by GrenzEcho XMLs to get correct author name.
       $author_name = preg_replace('/^von +/i', '', $author_name);
       // Save the value for literal output in frontend.
@@ -67,11 +76,11 @@ class Dialog4 extends Post {
 
     // Post status automatically adjusts by wp_insert_post()
     $this->post_status = 'publish';
-    if ($post_date = (string) $xml->xpath('//WebStoryHead/DocAttr/WebAttr/@dtmWebBegin')[0]) {
+    if ($post_date = (string) $xml->xpath('//DocAttr[parent::WebStoryHead | parent::PictureGalleryHead]/WebAttr/@dtmWebBegin')[0]) {
       $this->post_date = strtr($post_date, 'T', ' ');
     }
 
-    if ($categories = (string) $xml->xpath('//WebStoryHead/DocAttr/@strCatchwords')[0]) {
+    if ($categories = (string) $xml->xpath('//DocAttr[parent::WebStoryHead | parent::PictureGalleryHead]/@strCatchwords')[0]) {
       $term_ids = [];
       $categories = array_filter(array_map('trim', explode(';', $categories)));
       $placeholders = implode(',', array_fill(0, count($categories), '%s'));
@@ -93,12 +102,12 @@ class Dialog4 extends Post {
       $this->taxonomies['category'][get_the_category_by_ID($default_category_id)] = (int) $default_category_id;
     }
 
-    if ($location = (string) $xml->xpath('//WebStoryHead/DocAttr/@strLocation')[0]) {
-      $this->taxonomies['location'][] = $location;
+    if ($location = $xml->xpath('//WebStoryHead/DocAttr/@strLocation')) {
+      $this->taxonomies['location'][] = (string) $location[0];
     }
 
-    if ($comment_status = (string) $xml->xpath('//WebStoryHead/DocAttr/WebAttr/@bEnableComments')[0]) {
-      $this->comment_status = $comment_status === 'true' ? 'open' : 'closed';
+    if ($comment_status = $xml->xpath('//WebStoryHead/DocAttr/WebAttr/@bEnableComments')) {
+      $this->comment_status = (string) $comment_status[0] === 'true' ? 'open' : 'closed';
     }
 
     apply_filters('publishing_importer/post/parse_meta', $this, $xml);
@@ -110,14 +119,14 @@ class Dialog4 extends Post {
       'vorspann' => 'intro',
     ];
     foreach ($content as $name => $element) {
-      if ($name === 'PicBox') {
+      if ($name === 'PicBox' || $name === 'PicGalleryItem') {
         if ($filename = (string) basename(str_replace('\\', '/', $element->Image['strPathName']))) {
           if (!isset($this->files[$filename])) {
             $this->files[$filename] = [
               'filename' => $filename,
               'name' => $this->config['uploadsPrefix'] . $filename,
             ];
-            if ($caption = trim((string) $element->TBox->p)) {
+            if ($caption = trim((string) ($name === 'PicBox' ? $element->TBox->p : $element->Description))) {
               if (count($parts = preg_split('@(?<=[\s.!?])\s*(Fotos?|Quelle|Archivfotos?):\s*@', $caption)) > 1) {
                 $caption = $parts[0];
                 $this->files[$filename]['credit'] = $parts[1];
@@ -204,6 +213,16 @@ class Dialog4 extends Post {
     }
 
     return username_exists($this->config['defaultAuthor']);
+  }
+
+  protected function insertAttachment($attachment_id, array $file, $current_number) {
+    if ($current_number == 1) {
+      set_post_thumbnail($this->ID, $attachment_id);
+    }
+    $this->meta['images'][] = $attachment_id;
+    // Additionally trim to remove leading whitespace before text content;
+    // i.e., after removing placeholder for post thumbnail/featured image.
+    $this->post_content = trim(strtr($this->post_content, ["<!-- $file[orig_filename] -->" => ''])) . "\n";
   }
 
 }
