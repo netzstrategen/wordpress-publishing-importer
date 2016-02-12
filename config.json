@@ -5,7 +5,7 @@
     "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dialog4",
     "importDirectories": {
       "articles": "../ftp/webartikel/GrenzEcho",
-      "media": "../ftp/webartikel/GrenzEcho/media"
+      "media": "media"
     },
     "uploadsPrefix": "ge-",
     "defaultAuthor": "jwetzels"

@@ -35,14 +35,12 @@ class Plugin {
   }
 
   /**
-   * Returns the plugin configuration.
+   * Returns the parsed plugin configuration.
    *
    * @return array
    * @throws \Exception if any config.json file cannot be parsed.
-   * @throws \LogicException if any directory or file path specified in the
-   *   configuration does not exist.
    */
-  public static function getConfig() {
+  public static function readConfig() {
     // Read configuration.
     $config = json_decode(file_get_contents(static::getBasePath() . '/config.json'), TRUE);
     if ($config === NULL) {
@@ -56,12 +54,37 @@ class Plugin {
       }
       $config = array_replace_recursive($config, $config_local);
     }
+    return $config;
+  }
+
+  /**
+   * Returns the plugin configuration.
+   *
+   * @param array $overrides
+   *   (optional) Possible config overrides.
+   *
+   * @return array
+   * @throws \LogicException if any directory or file path specified in the
+   *   configuration does not exist.
+   */
+  public static function getConfig(array $overrides = []) {
+    $config = static::readConfig();
+    // Override config if argument is given.
+    if ($overrides) {
+      $config = array_replace_recursive($config, $overrides);
+    }
     // Validate configuration.
     foreach ($config as $publisher => $publisher_config) {
       $config[$publisher]['id'] = $publisher;
       foreach ($config[$publisher]['importDirectories'] as $name => $path) {
-        if (!$realpath = realpath(ABSPATH . $path)) {
-          throw new \LogicException("'$name' import directory not found: '$path'");
+        if ($name === 'media') {
+          $path = $config[$publisher]['importDirectories']['articles'] . '/' . $path;
+        }
+        if (file_exists(ABSPATH . $path)) {
+          $path = ABSPATH . $path;
+        }
+        if (!$realpath = realpath($path)) {
+          throw new \LogicException("'$name' import directory not found: '" . basename($path) . "'");
         }
         $config[$publisher]['importDirectories'][$name] = $realpath;
       }
@@ -80,8 +103,15 @@ class Plugin {
    * @param string $only_article_filename
    *   (optional) The article filename to import; e.g. '123456.xml'.
    */
-  public static function importContent($only_publisher_id = NULL, $only_article_filename = NULL) {
-    $config = static::getConfig();
+  public static function importContent($args) {
+    $args += [
+      'only_publisher_id' => NULL,
+      'only_article_filename' => NULL,
+      'config_overrides' => [],
+    ];
+    $only_publisher_id = $args['only_publisher_id'];
+    $only_article_filename = $args['only_article_filename'];
+    $config = static::getConfig($args['config_overrides']);
     if ($only_publisher_id) {
       $config = [$only_publisher_id => $config[$only_publisher_id]];
     }
@@ -123,10 +153,14 @@ class Plugin {
   }
 
   public static function error($e) {
-    // @todo Support more than CLI?
-    echo 'ERROR: ', $e->getMessage(), "\n";
-    echo $e->getTraceAsString(), "\n";
-    echo "\n";
+    if (defined('WP_CLI')) {
+      \WP_CLI::error($e->getMessage());
+    }
+    else {
+      echo 'ERROR: ', $e->getMessage(), "\n";
+      echo $e->getTraceAsString(), "\n";
+      echo "\n";
+    }
   }
 
   /**
