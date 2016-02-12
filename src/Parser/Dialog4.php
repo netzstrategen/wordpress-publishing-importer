@@ -107,7 +107,7 @@ class Dialog4 extends Post {
     }
 
     if ($comment_status = $xml->xpath('//WebStoryHead/DocAttr/WebAttr/@bEnableComments')) {
-      $this->comment_status = (string) $comment_status[0] === 'true' ? 'open' : 'closed';
+      $this->comment_status = ((string) $comment_status[0]) === 'true' ? 'open' : 'closed';
     }
 
     apply_filters('publishing_importer/post/parse_meta', $this, $xml);
