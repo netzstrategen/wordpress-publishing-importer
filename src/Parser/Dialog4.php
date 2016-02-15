@@ -63,9 +63,9 @@ class Dialog4 extends Post {
 
     // Check for explicitly specified author name.
     // @see static::parseAuthor()
-    if ($author_name = (string) $xml->xpath('//TBox[@strContentType="Author"]/p | //PictureGalleryHead/@strCreatorLoginName')[0]) {
+    if ($author_name = $xml->xpath('//TBox[@strContentType="Author"]/p | //PictureGalleryHead/@strCreatorLoginName')) {
       // Strip leading 'von' delivered by GrenzEcho XMLs to get correct author name.
-      $author_name = preg_replace('/^von +/i', '', $author_name);
+      $author_name = preg_replace('/^von +/i', '', (string) $author_name[0]);
       // Save the value for literal output in frontend.
       // $this->meta['author'] = $author_name;
       // Try to map it to an existing system user.
