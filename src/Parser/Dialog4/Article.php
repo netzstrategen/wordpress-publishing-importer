@@ -2,15 +2,17 @@
 
 /**
  * @file
- * Contains \Netzstrategen\PublishingImporter\Parser\Dialog4.
+ * Contains \Netzstrategen\PublishingImporter\Parser\Dialog4\Article.
  */
 
-namespace Netzstrategen\PublishingImporter\Parser;
+namespace Netzstrategen\PublishingImporter\Parser\Dialog4;
+
+use Netzstrategen\PublishingImporter\Parser\Post;
 
 /**
  * Parser for Dialog 4.
  */
-class Dialog4 extends Post {
+class Article extends Post {
 
   const FILE_EXTENSION = 'xml';
 

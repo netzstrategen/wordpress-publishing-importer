@@ -2,10 +2,17 @@
   "ge": {
     "publisher": "grenzecho",
     "system": "dialog",
-    "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dialog4",
-    "importDirectories": {
-      "articles": "../ftp/webartikel/GrenzEcho",
-      "media": "media"
+    "types": {
+      "article": {
+        "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dialog4\\Article",
+        "directory": "../ftp/webartikel/GrenzEcho",
+        "media": "media"
+      },
+      "sportstable": {
+        "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dialog4\\SportsTable",
+        "directory": "../ftp/sporttabellen/GrenzEcho",
+        "media": "media"
+      }
     },
     "uploadsPrefix": "ge-",
     "defaultAuthor": "redaktion"

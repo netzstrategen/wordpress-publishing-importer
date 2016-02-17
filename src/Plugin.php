@@ -76,17 +76,22 @@ class Plugin {
     // Validate configuration.
     foreach ($config as $publisher => $publisher_config) {
       $config[$publisher]['id'] = $publisher;
-      foreach ($config[$publisher]['importDirectories'] as $name => $path) {
-        if ($name === 'media') {
-          $path = $config[$publisher]['importDirectories']['articles'] . '/' . $path;
+      foreach ($config[$publisher]['types'] as $type => $data) {
+        foreach ($data as $name => $path) {
+          if ($name === 'parserClass') {
+            continue;
+          }
+          if ($name === 'media') {
+            $path = $config[$publisher]['types'][$type]['directory'] . '/' . $path;
+          }
+          if (file_exists(ABSPATH . $path)) {
+            $path = ABSPATH . $path;
+          }
+          if (!$realpath = realpath($path)) {
+            throw new \LogicException("'$name' import directory not found: '" . basename($path) . "'");
+          }
+          $config[$publisher]['types'][$type][$name] = $realpath;
         }
-        if (file_exists(ABSPATH . $path)) {
-          $path = ABSPATH . $path;
-        }
-        if (!$realpath = realpath($path)) {
-          throw new \LogicException("'$name' import directory not found: '" . basename($path) . "'");
-        }
-        $config[$publisher]['importDirectories'][$name] = $realpath;
       }
     }
     return $config;
@@ -108,43 +113,58 @@ class Plugin {
       'only_publisher_id' => NULL,
       'only_article_filename' => NULL,
       'config_overrides' => [],
+      'type' => NULL,
     ];
     $only_publisher_id = $args['only_publisher_id'];
     $only_article_filename = $args['only_article_filename'];
+    $only_type = $args['type'];
     $config = static::getConfig($args['config_overrides']);
     if ($only_publisher_id) {
       $config = [$only_publisher_id => $config[$only_publisher_id]];
     }
+    if ($only_type) {
+      foreach ($config as $publisher => $publisher_config) {
+        foreach ($publisher_config['types'] as $type) {
+          if ($only_type !== $type) {
+            unset($config[$publisher]['types'][$type]);
+          }
+        }
+      }
+    }
 
     foreach ($config as $publisher_config) {
-      $extension = '.' . $publisher_config['parserClass']::FILE_EXTENSION;
-      if ($only_article_filename) {
-        static::importOne($publisher_config, $publisher_config['importDirectories']['articles'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
-        break;
-      }
-      $glob = $publisher_config['importDirectories']['articles'] . '/*' . $extension;
-      $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
-      foreach ($git as $pathname => $fileinfo) {
-        static::importOne($publisher_config, $pathname, $fileinfo->getBasename($extension));
+      foreach ($publisher_config['types'] as $type => $data) {
+        $extension = '.' . $data['parserClass']::FILE_EXTENSION;
+        if ($only_article_filename) {
+          static::importOne($publisher_config, $publisher_config['types'][$type]['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
+          break;
+        }
+        $glob = $publisher_config['types'][$type]['directory'] . '/*' . $extension;
+        $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
+        foreach ($git as $pathname => $fileinfo) {
+          static::importOne($publisher_config, $pathname, $fileinfo->getBasename($extension));
+        }
       }
     }
   }
 
   public static function importOne($publisher_config, $pathname, $raw_filename) {
     try {
-      $post = $publisher_config['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
-      if ($post->isPristine()) {
-        if ($post->isRawDifferent()) {
-          $post->parse();
-          $post->save();
-          echo "Processed article $raw_filename (ID $post->ID).", "\n";
+      foreach ($publisher_config['types'] as $type => $data) {
+        $post = $data['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
+        if ($post->isPristine()) {
+          if ($post->isRawDifferent()) {
+            $post->parse();
+            $post->save();
+            echo "Processed article $raw_filename (ID $post->ID).", "\n";
+          }
+          else {
+            echo "Article $raw_filename (ID $post->ID) is same as original.", "\n";
+          }
         }
         else {
-          echo "Article $raw_filename (ID $post->ID) is same as original.", "\n";
+          echo "Article $raw_filename (ID $post->ID) has been manually edited.", "\n";
         }
-      }
-      else {
-        echo "Article $raw_filename (ID $post->ID) has been manually edited.", "\n";
       }
     }
     catch (\Exception $e) {

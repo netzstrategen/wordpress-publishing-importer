@@ -325,63 +325,65 @@ abstract class Post {
       require_once ABSPATH . 'wp-admin/includes/image.php';
 
       $post_content_before = $this->post_content;
-      $dir = $this->config['importDirectories']['media'];
-      $i = 0;
-      foreach ($this->files as $filename => $file) {
-        $i++;
-        $orig_filename = $filename;
-        $file += ['caption' => ''];
-        if (!file_exists($dir . '/' . $filename)) {
-          // Try to decode a filename containing hex-encoded characters beyond ASCII.
-          // E.g., 'staatsstra_C3_9Fe1.jpg' => 'staatsstraße1.jpg'
-          if ($filename !== $encoded_filename = preg_replace('@_([a-z0-9]{2})@i', '%$1', $filename)) {
-            $encoded_filename = urldecode($encoded_filename);
-            if (DIRECTORY_SEPARATOR === '\\') {
-              $encoded_filename = iconv('utf-8', 'cp1252', $encoded_filename);
+      foreach ($this->config['types'] as $type => $data) {
+        $dir = $data['media'];
+        $i = 0;
+        foreach ($this->files as $filename => $file) {
+          $i++;
+          $orig_filename = $filename;
+          $file += ['caption' => ''];
+          if (!file_exists($dir . '/' . $filename)) {
+            // Try to decode a filename containing hex-encoded characters beyond ASCII.
+            // E.g., 'staatsstra_C3_9Fe1.jpg' => 'staatsstraße1.jpg'
+            if ($filename !== $encoded_filename = preg_replace('@_([a-z0-9]{2})@i', '%$1', $filename)) {
+              $encoded_filename = urldecode($encoded_filename);
+              if (DIRECTORY_SEPARATOR === '\\') {
+                $encoded_filename = iconv('utf-8', 'cp1252', $encoded_filename);
+              }
+              if (file_exists($dir . '/' . $encoded_filename)) {
+                $filename = $encoded_filename;
+              }
             }
-            if (file_exists($dir . '/' . $encoded_filename)) {
-              $filename = $encoded_filename;
+            elseif (DIRECTORY_SEPARATOR === '\\' && file_exists($dir . '/' . iconv('utf-8', 'cp1252', $filename))) {
+              $filename = iconv('utf-8', 'cp1252', $filename);
             }
           }
-          elseif (DIRECTORY_SEPARATOR === '\\' && file_exists($dir . '/' . iconv('utf-8', 'cp1252', $filename))) {
-            $filename = iconv('utf-8', 'cp1252', $filename);
+          $attachment_id = NULL;
+          $guid = 'http://' . $this->config['publisher'] . '/' . $this->config['system'] . '/' . $filename;
+          if ($attachment = static::loadByGuid($guid)) {
+            $attachment_id = $attachment->ID;
+            wp_update_post([
+              'ID' => $attachment_id,
+              'post_excerpt' => !empty($file['caption']) ? $file['caption'] : '',
+            ]);
           }
-        }
-        $attachment_id = NULL;
-        $guid = 'http://' . $this->config['publisher'] . '/' . $this->config['system'] . '/' . $filename;
-        if ($attachment = static::loadByGuid($guid)) {
-          $attachment_id = $attachment->ID;
-          wp_update_post([
-            'ID' => $attachment_id,
-            'post_excerpt' => !empty($file['caption']) ? $file['caption'] : '',
-          ]);
-        }
-        elseif (file_exists($dir . '/' . $filename)) {
-          // _wp_handle_upload() *moves* $file['tmp_name'] into uploads/$file['name']
-          // (prepared by the parser), so ensure to copy/back up the original file first.
-          $file['tmp_name'] = $dir . '/' . $file['name'];
-          if ($filename == $file['name']) {
-            $file['tmp_name'] = strtr($file['tmp_name'], ['.' => '_.']);
+          elseif (file_exists($dir . '/' . $filename)) {
+            // _wp_handle_upload() *moves* $file['tmp_name'] into uploads/$file['name']
+            // (prepared by the parser), so ensure to copy/back up the original file first.
+            $file['tmp_name'] = $dir . '/' . $file['name'];
+            if ($filename == $file['name']) {
+              $file['tmp_name'] = strtr($file['tmp_name'], ['.' => '_.']);
+            }
+            copy($dir . '/' . $filename, $file['tmp_name']);
+            $attachment_id = media_handle_sideload($file, $this->ID, NULL, [
+              'guid' => $guid,
+              'post_title' => $orig_filename,
+              'post_excerpt' => $file['caption'],
+            ]);
+            if ($attachment_id instanceof \WP_Error) {
+              $attachment_id = NULL;
+            }
           }
-          copy($dir . '/' . $filename, $file['tmp_name']);
-          $attachment_id = media_handle_sideload($file, $this->ID, NULL, [
-            'guid' => $guid,
-            'post_title' => $orig_filename,
-            'post_excerpt' => $file['caption'],
-          ]);
-          if ($attachment_id instanceof \WP_Error) {
-            $attachment_id = NULL;
+          if ($attachment_id) {
+            if (!empty($file['credit'])) {
+              update_post_meta($attachment_id, 'credit', $file['credit']);
+            }
+            else {
+              delete_post_meta($attachment_id, 'credit');
+            }
+            $file += ['orig_filename' => $orig_filename];
+            $this->insertAttachment($attachment_id, $file, $i);
           }
-        }
-        if ($attachment_id) {
-          if (!empty($file['credit'])) {
-            update_post_meta($attachment_id, 'credit', $file['credit']);
-          }
-          else {
-            delete_post_meta($attachment_id, 'credit');
-          }
-          $file += ['orig_filename' => $orig_filename];
-          $this->insertAttachment($attachment_id, $file, $i);
         }
       }
       // Update post_content to replace/remove image placeholder strings.

@@ -7,20 +7,22 @@ class CliCommand extends \WP_CLI_Command {
    * Imports articles via publishing-importer plugin.
    *
    * @see Netzstrategen\PublishingImporter\Plugin::importContent()
-   * @synopsis [--dir=<directorypath>] [--publisher=<ge>] [--filename=<filename>]
+   * @synopsis [--type=<type>] [--dir=<directorypath>] [--publisher=<ge>] [--filename=<filename>]
    */
   public function import(array $args, array $options) {
     if (isset($options['publisher'])) {
       $options['only_publisher_id'] = $options['publisher'];
     }
     if (isset($options['dir'])) {
-      if (isset($options['publisher'])) {
-        $options['config_overrides'][$options['publisher']]['importDirectories']['articles'] = $options['dir'];
+      if (isset($options['publisher']) && isset($options['type'])) {
+        $options['config_overrides'][$options['publisher']]['types'][$options['type']]['directory'] = $options['dir'];
       }
       else {
         $config = Plugin::readConfig();
         foreach ($config as $publisher => $publisher_config) {
-          $options['config_overrides'][$publisher]['importDirectories']['articles'] = $options['dir'];
+          foreach ($publisher_config['types'] as $name => $type) {
+            $options['config_overrides'][$publisher]['types'][$name]['directory'] = $options['dir'];
+          }
         }
       }
     }
