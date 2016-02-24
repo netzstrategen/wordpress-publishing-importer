@@ -325,8 +325,8 @@ abstract class Post {
       require_once ABSPATH . 'wp-admin/includes/image.php';
 
       $post_content_before = $this->post_content;
-      foreach ($this->config['types'] as $type => $data) {
-        $dir = $data['media'];
+      foreach ($this->config['types'] as $type => $type_config) {
+        $dir = $type_config['media'];
         $i = 0;
         foreach ($this->files as $filename => $file) {
           $i++;

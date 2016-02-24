@@ -76,8 +76,8 @@ class Plugin {
     // Validate configuration.
     foreach ($config as $publisher => $publisher_config) {
       $config[$publisher]['id'] = $publisher;
-      foreach ($config[$publisher]['types'] as $type => $data) {
-        foreach ($data as $name => $path) {
+      foreach ($config[$publisher]['types'] as $type => $type_config) {
+        foreach ($type_config as $name => $path) {
           if ($name === 'parserClass') {
             continue;
           }
@@ -124,7 +124,7 @@ class Plugin {
     }
     if ($only_type) {
       foreach ($config as $publisher => $publisher_config) {
-        foreach ($publisher_config['types'] as $type) {
+        foreach ($publisher_config['types'] as $type => $type_config) {
           if ($only_type !== $type) {
             unset($config[$publisher]['types'][$type]);
           }
@@ -133,8 +133,8 @@ class Plugin {
     }
 
     foreach ($config as $publisher_config) {
-      foreach ($publisher_config['types'] as $type => $data) {
-        $extension = '.' . $data['parserClass']::FILE_EXTENSION;
+      foreach ($publisher_config['types'] as $type => $type_config) {
+        $extension = '.' . $type_config['parserClass']::FILE_EXTENSION;
         if ($only_article_filename) {
           static::importOne($publisher_config, $publisher_config['types'][$type]['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
           break;
@@ -150,8 +150,8 @@ class Plugin {
 
   public static function importOne($publisher_config, $pathname, $raw_filename) {
     try {
-      foreach ($publisher_config['types'] as $type => $data) {
-        $post = $data['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
+      foreach ($publisher_config['types'] as $type => $type_config) {
+        $post = $type_config['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
         if ($post->isPristine()) {
           if ($post->isRawDifferent()) {
             $post->parse();
