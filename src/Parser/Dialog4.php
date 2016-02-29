@@ -87,7 +87,8 @@ class Dialog4 extends Post {
       $query = "SELECT t.name, t.term_id
         FROM {$wpdb->terms} t
         LEFT JOIN {$wpdb->termmeta} tm ON tm.term_id = t.term_id
-        WHERE t.name IN ($placeholders)
+        LEFT JOIN {$wpdb->term_taxonomy} tt ON tt.term_id = t.term_id
+        WHERE t.name IN ($placeholders) AND tt.taxonomy = 'category'
         OR tm.meta_key = '_publishing_importer_synonyms' AND tm.meta_value IN ($placeholders)
         GROUP BY t.term_id";
       $categories = array_merge($categories, $categories);
@@ -103,7 +104,11 @@ class Dialog4 extends Post {
     }
 
     if ($location = $xml->xpath('//WebStoryHead/DocAttr/@strLocation')) {
-      $this->taxonomies['location'][] = (string) $location[0];
+      $location = (string) $location[0];
+      if (isset($this->taxonomies['category'][$location])) {
+        unset($this->taxonomies['category'][$location]);
+      }
+      $this->taxonomies['location'][] = $location;
     }
 
     if ($comment_status = $xml->xpath('//WebStoryHead/DocAttr/WebAttr/@bEnableComments')) {
