@@ -30,13 +30,13 @@ class Dialog4 extends Post {
     // may already exist on the WP_Post object when updating an existing post.
     $this->post_title = '';
     if (isset($xml->WebStory)) {
-      $this->post_content = $this->parseContent($dom->getElementsByTagName('WebStoryContent')[0]);
+      $this->post_content = $this->parseContent($dom->getElementsByTagName('WebStoryContent')->item(0));
     }
     else {
       $this->post_title = $this->ensureSingleLine((string) $xml->xpath('//PictureGalleryHead/@strHeading')[0]);
       $this->post_type = 'gallery';
       $this->meta['_images'] = 'field_gallery';
-      $this->post_content = $this->parseContent($dom->getElementsByTagName('PictureGallery')[0]);
+      $this->post_content = $this->parseContent($dom->getElementsByTagName('PictureGallery')->item(0));
     }
 
     if (empty($this->post_author)) {
@@ -133,13 +133,21 @@ class Dialog4 extends Post {
         $name = $element->tagName;
       }
       if ($name === 'PicBox' || $name === 'PicGalleryItem') {
-        if ($filename = (string) basename(str_replace('\\', '/', $element->getElementsByTagName('Image')[0]->getAttribute('strPathName')))) {
+        $image = $element->getElementsByTagName('Image')->item(0);
+        if (!$image || !$image->hasAttribute('strPathName')) {
+          continue;
+        }
+        if ($filename = (string) basename(str_replace('\\', '/', $image->getAttribute('strPathName')))) {
           if (!isset($this->files[$filename])) {
             $this->files[$filename] = [
               'filename' => $filename,
               'name' => $this->config['uploadsPrefix'] . $filename,
             ];
-            if ($caption = trim((string) ($name === 'PicBox' ? $element->getElementsByTagName('TBox')[0]->textContent : $element->getElementsByTagName('Description')[0]->textContent))) {
+            if ($caption_box = $element->getElementsByTagName('TBox')->item(0)) {
+            }
+            elseif ($caption_box = $element->getElementsByTagName('Description')->item(0)) {
+            }
+            if ($caption_box && $caption = trim($caption_box->textContent)) {
               if (count($parts = preg_split('@(?<=[\s.!?])\s*(Fotos?|Quelle|Archivfotos?):\s*@', $caption)) > 1) {
                 $caption = $parts[0];
                 $this->files[$filename]['credit'] = $parts[1];
