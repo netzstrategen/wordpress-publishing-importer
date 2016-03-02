@@ -16,6 +16,7 @@ class Dialog4 extends Post {
 
   public function parse() {
     $xml = simplexml_load_string($this->raw);
+    $dom = dom_import_simplexml($xml);
     // @todo Negotiate parser implementation based on the actual info.
     $system = 'Dialog';
     $version = (string) $xml['strDialogVersion'];
@@ -29,13 +30,13 @@ class Dialog4 extends Post {
     // may already exist on the WP_Post object when updating an existing post.
     $this->post_title = '';
     if (isset($xml->WebStory)) {
-      $this->post_content = $this->parseContent($xml->WebStory->WebStoryContent->TextContent);
+      $this->post_content = $this->parseContent($dom->getElementsByTagName('WebStoryContent')[0]);
     }
     else {
       $this->post_title = $this->ensureSingleLine((string) $xml->xpath('//PictureGalleryHead/@strHeading')[0]);
       $this->post_type = 'gallery';
       $this->meta['_images'] = 'field_gallery';
-      $this->post_content = $this->parseContent($xml->PictureGallery->PictureGalleryContent);
+      $this->post_content = $this->parseContent($dom->getElementsByTagName('PictureGallery')[0]);
     }
 
     if (empty($this->post_author)) {
@@ -118,20 +119,27 @@ class Dialog4 extends Post {
     apply_filters('publishing_importer/post/parse_meta', $this, $xml);
   }
 
-  public function parseContent(\SimpleXMLElement $content) {
+  public function parseContent(\DOMNode $content) {
     $html = '';
     $style_classes = [
       'vorspann' => 'intro',
+      'interview-frage' => 'interview',
+      'sportergebnis' => 'sportsresult',
+      'pic-info' => 'infobox',
     ];
-    foreach ($content as $name => $element) {
+    foreach ($content->childNodes as $element) {
+      $name = '';
+      if (isset($element->tagName)) {
+        $name = $element->tagName;
+      }
       if ($name === 'PicBox' || $name === 'PicGalleryItem') {
-        if ($filename = (string) basename(str_replace('\\', '/', $element->Image['strPathName']))) {
+        if ($filename = (string) basename(str_replace('\\', '/', $element->getElementsByTagName('Image')[0]->getAttribute('strPathName')))) {
           if (!isset($this->files[$filename])) {
             $this->files[$filename] = [
               'filename' => $filename,
               'name' => $this->config['uploadsPrefix'] . $filename,
             ];
-            if ($caption = trim((string) ($name === 'PicBox' ? $element->TBox->p : $element->Description))) {
+            if ($caption = trim((string) ($name === 'PicBox' ? $element->getElementsByTagName('TBox')[0]->textContent : $element->getElementsByTagName('Description')[0]->textContent))) {
               if (count($parts = preg_split('@(?<=[\s.!?])\s*(Fotos?|Quelle|Archivfotos?):\s*@', $caption)) > 1) {
                 $caption = $parts[0];
                 $this->files[$filename]['credit'] = $parts[1];
@@ -144,21 +152,29 @@ class Dialog4 extends Post {
         continue;
       }
 
-      if ($element->count()) {
-        $innerhtml = $this->parseContent($element);
+      if ($element->hasChildNodes()) {
+        $innerhtml = trim($this->parseContent($element));
+        if ($name === 'ul' || $name === 'ol') {
+          $innerhtml = "\n" . $innerhtml . "\n";
+        }
       }
       else {
-        $innerhtml = (string) $element;
+        $innerhtml = preg_replace('@\s+@', ' ', $element->textContent);
       }
       // Skip empty paragraphs/elements.
-      if ($innerhtml === '') {
+      if ($innerhtml === '' || preg_match('@^\s+$@', $innerhtml)) {
         continue;
       }
+      $tag = '';
+      $style = '';
+      $classes = [];
       if ($name === 'TBox') {
-        $tag = '';
-        $classes = [];
-        $type = mb_strtolower($element['strContentType']);
-        $style = mb_strtolower($element['strBoxName']);
+        $type = mb_strtolower($element->getAttribute('strContentType'));
+        $style = mb_strtolower($element->getAttribute('strBoxName'));
+
+        if ($type === 'location') {
+          continue;
+        }
 
         if ($type === 'author') {
           // Strip leading 'von' delivered by GrenzEcho XMLs to get correct author name.
@@ -170,34 +186,56 @@ class Dialog4 extends Post {
           $this->post_title = $this->ensureSingleLine($innerhtml);
           continue;
         }
-        elseif ($type === 'headline') {
-          $this->meta['wps_subtitle'] = $this->ensureSingleLine($innerhtml);
-          continue;
-        }
-
-        foreach ($style_classes as $candidate => $classname) {
-          if (FALSE !== strpos($style, is_string($candidate) ? $candidate : $classname)) {
-            $classes[] = $classname;
-          }
-        }
-        if ($classes || $tag) {
-          $classes = $classes ? ' class="' . implode(' ', $classes) . '"' : '';
-          if (!$tag) {
-            $tag = 'p';
-          }
-          $innerhtml = '<' . $tag . $classes . '>' . $innerhtml . '</' . $tag . '>';
-        }
 
         if ($type === 'teaser') {
           $this->post_excerpt = ltrim($innerhtml);
           continue;
         }
+        elseif ($type === 'headline') {
+          $this->meta['wps_subtitle'] = $this->ensureSingleLine($innerhtml);
+          continue;
+        }
+
       }
-      // Sometimes paragraphs contain false leading whitespace.
-      $html .= ltrim($innerhtml);
-      if ($name === 'p') {
-        $html .= "\n\n";
+      elseif ($name === 'IMTitle') {
+        $type = mb_strtolower($element->getAttribute('strName'));
+        if ($type === 'zwischentitel') {
+          $tag = 'h3';
+        }
+        if ($type === 'zitat') {
+          $tag = 'blockquote';
+        }
+        // Change sportsresult markup to allow visual styling.
+        if ($type === 'sportergebnis') {
+          $innerhtml = preg_replace('@^(.+?)\s+-\s+(.+?)\s+(\d+:\d+)$@', '<span class="club">$1</span> <span class="score">$3</span> <span class="club">$2</span>', $innerhtml);
+        }
+        $style = $type;
       }
+      elseif (in_array($name, ['ol', 'ul', 'li', 'b'], TRUE)) {
+        $tag = $name;
+      }
+      if ($style) {
+        foreach ($style_classes as $candidate => $classname) {
+          if (FALSE !== strpos($style, is_string($candidate) ? $candidate : $classname)) {
+            $classes[] = $classname;
+          }
+        }
+      }
+      if ($classes || $tag) {
+        $classes = $classes ? ' class="' . implode(' ', $classes) . '"' : '';
+        if (!$tag) {
+          $tag = 'p';
+        }
+        $innerhtml = '<' . $tag . $classes . '>' . $innerhtml . '</' . $tag . '>';
+      }
+
+      if ($name === 'p' || ($innerhtml[0] === '<' && ($innerhtml[1] === 'p' || $innerhtml[1] === 'o' || $innerhtml[1] === 'h' || $innerhtml[1] === 'u'))) {
+        $innerhtml .= "\n\n";
+      }
+      elseif ($name === 'li') {
+        $innerhtml .= "\n";
+      }
+      $html .= $innerhtml;
     }
     return $html;
   }
