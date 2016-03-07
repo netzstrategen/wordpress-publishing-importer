@@ -394,11 +394,11 @@ class WoodWing7 extends Post {
     }
     else {
       // @see wp_ajax_send_attachment_to_editor()
-      $html = get_image_send_to_editor($attachment_id, $file['caption'], '', 'none', '', TRUE, 'medium', $file['caption']);
+      $html = get_image_send_to_editor($attachment_id, $file['caption'], '', 'none');
     }
     // Additionally trim to remove leading whitespace before text content;
     // i.e., after removing placeholder for post thumbnail/featured image.
-    $this->post_content = trim(strtr($this->post_content, ["<!-- $file[orig_filename] -->" => ''])) . "\n";
+    $this->post_content = trim(strtr($this->post_content, ["<!-- $file[orig_filename] -->" => $html])) . "\n";
   }
 
 }

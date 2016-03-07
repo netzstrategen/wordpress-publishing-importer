@@ -267,13 +267,20 @@ class Dialog4 extends Post {
   }
 
   protected function insertAttachment($attachment_id, array $file, $current_number) {
+    $html = '';
     if ($current_number == 1) {
       set_post_thumbnail($this->ID, $attachment_id);
     }
-    $this->meta['images'][] = $attachment_id;
+    elseif ($this->post_type !== 'gallery') {
+      // @see wp_ajax_send_attachment_to_editor()
+      $html = get_image_send_to_editor($attachment_id, $file['caption'], '', 'none');
+    }
+    if ($this->post_type === 'gallery') {
+      $this->meta['images'][] = $attachment_id;
+    }
     // Additionally trim to remove leading whitespace before text content;
     // i.e., after removing placeholder for post thumbnail/featured image.
-    $this->post_content = trim(strtr($this->post_content, ["<!-- $file[orig_filename] -->" => ''])) . "\n";
+    $this->post_content = trim(strtr($this->post_content, ["<!-- $file[orig_filename] -->" => $html])) . "\n";
   }
 
 }
