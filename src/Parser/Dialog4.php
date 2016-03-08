@@ -273,7 +273,7 @@ class Dialog4 extends Post {
     }
     elseif ($this->post_type !== 'gallery') {
       // @see wp_ajax_send_attachment_to_editor()
-      $html = get_image_send_to_editor($attachment_id, $file['caption'], '', 'none');
+      $html = get_image_send_to_editor($attachment_id, $file['caption'], '', 'none', '', '', 'post-thumbnail');
     }
     if ($this->post_type === 'gallery') {
       $this->meta['images'][] = $attachment_id;
