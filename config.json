@@ -8,6 +8,11 @@
         "directory": "../ftp/webartikel/GrenzEcho",
         "media": "media"
       },
+      "gallery": {
+        "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dialog4\\Article",
+        "directory": "../ftp/bildergalerien/GrenzEcho",
+        "media": "media"
+      },
       "sportstable": {
         "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dialog4\\SportsTable",
         "directory": "../ftp/sporttabellen/GrenzEcho",
