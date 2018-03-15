@@ -15,15 +15,12 @@ namespace Netzstrategen\PublishingImporter\Parser;
  */
 abstract class Post {
 
-  /**
-   * @var array
-   */
-  private static $wp_post_class_vars;
+  const FILE_EXTENSION = 'xml';
 
   /**
    * @var array
    */
-  protected static $all_authors;
+  private static $wp_post_class_vars;
 
   /**
    * The publishing importer configuration applicable for this post.
@@ -76,6 +73,20 @@ abstract class Post {
    * @var string
    */
   protected $raw;
+
+  public static function recursiveCallbackFilter($current, $key, $iterator) {
+    if ($current->getFilename()[0] === '.') {
+      return FALSE;
+    }
+    if ($current->isDir()) {
+      return TRUE;
+    }
+    return '.' . $current->getExtension() === static::FILE_EXTENSION;
+  }
+
+  public static function beforeRecurse(\Iterator $git) {
+    return $git;
+  }
 
   /**
    * Constructs a new Post from a given file (content) for potential parsing.

@@ -25,6 +25,11 @@ class Plugin {
   private static $baseUrl;
 
   /**
+   * @var resource
+   */
+  public static $importFileHandle;
+
+  /**
    * @implements init
    */
   public static function init() {
@@ -77,10 +82,10 @@ class Plugin {
       $config[$publisher]['id'] = $publisher;
       foreach ($config[$publisher]['types'] as $type => $type_config) {
         foreach ($type_config as $name => $path) {
-          if ($name === 'parserClass') {
+          if ($name !== 'directory' && $name !== 'media' && $name !== 'file') {
             continue;
           }
-          if ($name === 'media') {
+          if ($name === 'media' || $name === 'file') {
             $path = $config[$publisher]['types'][$type]['directory'] . '/' . $path;
           }
           $original_path = $path;
@@ -91,6 +96,9 @@ class Plugin {
             throw new \LogicException("Import directory for type '$type' not found: '" . $original_path . "'");
           }
           $config[$publisher]['types'][$type][$name] = $realpath;
+        }
+        if (!isset($config[$publisher]['types'][$type]['media'])) {
+          $config[$publisher]['types'][$type]['media'] = $config[$publisher]['types'][$type]['directory'];
         }
       }
     }
@@ -139,10 +147,37 @@ class Plugin {
           static::importOne($publisher_config, $type, $type_config['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
           break;
         }
-        $glob = $publisher_config['types'][$type]['directory'] . '/*' . $extension;
-        $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
-        foreach ($git as $pathname => $fileinfo) {
-          static::importOne($publisher_config, $type, $pathname, $fileinfo->getBasename($extension));
+        if (!isset($type_config['file'])) {
+          if (!empty($type_config['recursive'])) {
+            $directory = new \RecursiveDirectoryIterator($type_config['directory'], \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS | \FilesystemIterator::FOLLOW_SYMLINKS);
+            $filter = new \RecursiveCallbackFilterIterator($directory, [$type_config['parserClass'], 'recursiveCallbackFilter']);
+            $git = new \RecursiveIteratorIterator($filter);
+            $git = $type_config['parserClass']::beforeRecurse($git);
+          }
+          else {
+            $glob = $type_config['directory'] . '/*' . $extension;
+            $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
+          }
+          foreach ($git as $pathname => $fileinfo) {
+            static::importOne($publisher_config, $type, $pathname, $fileinfo->getBasename($extension));
+          }
+        }
+        else {
+          $pathname = $type_config['file'];
+          if ($extension === '.csv') {
+            static::$importFileHandle = fopen($pathname, 'r');
+            while (!feof(static::$importFileHandle) && FALSE !== static::importOne($publisher_config, $type, $pathname, basename($pathname, $extension))) {
+            }
+            fclose(static::$importFileHandle);
+          }
+          elseif ($extension === '.json') {
+            static::$importFileHandle = json_decode(file_get_contents($pathname), TRUE);
+            while (FALSE !== static::importOne($publisher_config, $type, $pathname, basename($pathname, $extension))) {
+            }
+          }
+          else {
+            throw new \LogicException("No file import handler for extension $extension");
+          }
         }
       }
     }
