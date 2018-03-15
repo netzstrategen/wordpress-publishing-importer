@@ -346,6 +346,7 @@ abstract class Post {
       foreach ($this->config['types'] as $type => $type_config) {
         $dir = $type_config['media'];
         $i = 0;
+        $attachment_ids = [];
         foreach ($this->files as $filename => $file) {
           $i++;
           $orig_filename = basename($filename);
@@ -401,7 +402,11 @@ abstract class Post {
             }
             $file += ['orig_filename' => $orig_filename];
             $this->insertAttachment($attachment_id, $file, $i);
+            $attachment_ids[] = $attachment_id;
           }
+        }
+        if ($attachment_ids) {
+          $this->organizeAttachments($attachment_ids);
         }
       }
       // Update post_content to replace/remove image placeholder strings.
@@ -423,6 +428,15 @@ abstract class Post {
    *   Meta data that has been passed to media_handle_sideload().
    */
   abstract protected function insertAttachment($attachment_id, array $file, $current_number);
+
+  /**
+   * Puts a given list of attachments into a folder.
+   *
+   * @param array $attachment_ids
+   *   The list of attachments IDs to organize into the folder.
+   */
+  protected function organizeAttachments(array $attachment_ids) {
+  }
 
   public function render() {
     $this->wp_post->ID = (int) $this->meta['_publishing_importer_id'];
