@@ -31,7 +31,6 @@ class Plugin {
     if (is_admin() || defined('WP_CLI')) {
       return;
     }
-    //static::importContent();
   }
 
   /**
@@ -44,13 +43,13 @@ class Plugin {
     // Read configuration.
     $config = json_decode(file_get_contents(static::getBasePath() . '/config.json'), TRUE);
     if ($config === NULL) {
-      throw new \Exception("config.json parsing error: " . json_last_error_msg());
+      throw new \DomainException("config.json: Parse error: " . json_last_error_msg());
     }
     // Check for local (site-specific) override configuration.
     if (file_exists(ABSPATH . '.publishing_importer.config.json')) {
       $config_local = json_decode(file_get_contents(ABSPATH . '.publishing_importer.config.json'), TRUE);
       if ($config_local === NULL) {
-        throw new \Exception(".publishing_importer.config.json parsing error: " . json_last_error_msg());
+        throw new \DomainException(".publishing_importer.config.json: Parse error: " . json_last_error_msg());
       }
       $config = array_replace_recursive($config, $config_local);
     }
@@ -84,11 +83,12 @@ class Plugin {
           if ($name === 'media') {
             $path = $config[$publisher]['types'][$type]['directory'] . '/' . $path;
           }
+          $original_path = $path;
           if (file_exists(ABSPATH . $path)) {
             $path = ABSPATH . $path;
           }
           if (!$realpath = realpath($path)) {
-            throw new \LogicException("'$name' import directory not found: '" . basename($path) . "'");
+            throw new \LogicException("Import directory for type '$type' not found: '" . $original_path . "'");
           }
           $config[$publisher]['types'][$type][$name] = $realpath;
         }
@@ -100,15 +100,15 @@ class Plugin {
   /**
    * Imports new content from filesystem folders.
    *
-   * wp eval --user=system 'Netzstrategen\PublishingImporter\Plugin::importContent();'
-   * wp eval --user=system 'Netzstrategen\PublishingImporter\Plugin::importContent("pz", "123456.xml");'
+   * wp --user=system publishing-importer import
+   * wp --user=system publishing-importer import --publisher=pz --filename=123456.xml
    *
-   * @param string $only_publisher_id
-   *   (optional) The publisher ID to import; e.g. 'pz'.
-   * @param string $only_article_filename
-   *   (optional) The article filename to import; e.g. '123456.xml'.
+   * @param array $args
+   *   (optional) Parameters to limit the import:
+   *   - only_publisher_id: The publisher ID to import; e.g. 'pz'.
+   *   - only_article_filename: The article filename to import; e.g. '123456.xml'.
    */
-  public static function importContent($args) {
+  public static function importContent($args = []) {
     $args += [
       'only_publisher_id' => NULL,
       'only_article_filename' => NULL,
@@ -136,35 +136,38 @@ class Plugin {
       foreach ($publisher_config['types'] as $type => $type_config) {
         $extension = '.' . $type_config['parserClass']::FILE_EXTENSION;
         if ($only_article_filename) {
-          static::importOne($publisher_config, $publisher_config['types'][$type]['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
+          static::importOne($publisher_config, $type, $type_config['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
           break;
         }
         $glob = $publisher_config['types'][$type]['directory'] . '/*' . $extension;
         $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
         foreach ($git as $pathname => $fileinfo) {
-          static::importOne($publisher_config, $pathname, $fileinfo->getBasename($extension));
+          static::importOne($publisher_config, $type, $pathname, $fileinfo->getBasename($extension));
         }
       }
     }
   }
 
-  public static function importOne($publisher_config, $pathname, $raw_filename) {
+  public static function importOne($publisher_config, $type, $pathname, $raw_filename) {
     try {
-      foreach ($publisher_config['types'] as $type => $type_config) {
-        $post = $type_config['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
-        if ($post->isPristine()) {
-          if ($post->isRawDifferent()) {
-            $post->parse();
-            $post->save();
-            echo "Processed article $raw_filename (ID $post->ID).", "\n";
-          }
-          else {
-            echo "Article $raw_filename (ID $post->ID) is same as original.", "\n";
-          }
+      $type_config = $publisher_config['types'][$type];
+      $entity_noun = ucfirst($type);
+      $entity = $type_config['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
+      if (!$entity instanceof $type_config['parserClass']) {
+        return $entity;
+      }
+      if ($entity->isPristine()) {
+        if ($entity->isRawDifferent()) {
+          $entity->parse();
+          $entity->save();
+          static::notice("Processed $type $raw_filename (ID $entity->ID).");
         }
         else {
-          echo "Article $raw_filename (ID $post->ID) has been manually edited.", "\n";
+          static::debug("$entity_noun $raw_filename (ID $entity->ID) is same as original.");
         }
+      }
+      else {
+        static::notice("$entity_noun $raw_filename (ID $entity->ID) has been manually edited.");
       }
     }
     catch (\Exception $e) {
@@ -172,14 +175,53 @@ class Plugin {
     }
   }
 
-  public static function error($e) {
+  /**
+   * Outputs a debug message (WP_CLI only).
+   *
+   * @param string $message
+   *   The message to output.
+   */
+  public static function debug($message) {
     if (defined('WP_CLI')) {
-      \WP_CLI::error($e->getMessage());
+      \WP_CLI::debug($message);
+    }
+  }
+
+  /**
+   * Outputs a notice/log message (WP_CLI only).
+   *
+   * @param string $message
+   *   The message to output.
+   */
+  public static function notice($message) {
+    if (defined('WP_CLI')) {
+      \WP_CLI::log($message);
+    }
+  }
+
+  /**
+   * Reports an error message, optionally halting execution.
+   *
+   * @param \Exception $e
+   *   The exception message to output.
+   * @param int $exit_code
+   *   (optional) The exit status code to signal. If TRUE or >= 1 then script
+   *   execution is halted.
+   */
+  public static function error($e, $exit_code = 0) {
+    $message = $e instanceof \Exception ? $e->getMessage() : $e;
+    if (defined('WP_CLI')) {
+      \WP_CLI::error($message, $exit_code);
     }
     else {
-      echo 'ERROR: ', $e->getMessage(), "\n";
-      echo $e->getTraceAsString(), "\n";
+      echo 'ERROR: ', $message, "\n";
+      if ($e instanceof \Exception) {
+        echo $e->getTraceAsString(), "\n";
+      }
       echo "\n";
+      if ($exit_code === TRUE || (is_int($exit_code) && $exit_code >= 1)) {
+        exit($exit_code);
+      }
     }
   }
 

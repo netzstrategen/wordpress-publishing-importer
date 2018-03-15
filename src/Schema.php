@@ -16,8 +16,6 @@ class Schema {
    * register_activation_hook() callback.
    */
   public static function activate() {
-    global $wpdb;
-//    add_option('', []);
   }
 
   /**
@@ -30,7 +28,6 @@ class Schema {
    * register_uninstall_hook() callback.
    */
   public static function uninstall() {
-//    delete_option('');
   }
 
 }

@@ -360,10 +360,7 @@ abstract class Post {
           elseif (file_exists($dir . '/' . $filename)) {
             // _wp_handle_upload() *moves* $file['tmp_name'] into uploads/$file['name']
             // (prepared by the parser), so ensure to copy/back up the original file first.
-            $file['tmp_name'] = $dir . '/' . $file['name'];
-            if ($filename == $file['name']) {
-              $file['tmp_name'] = strtr($file['tmp_name'], ['.' => '_.']);
-            }
+            $file['tmp_name'] = sys_get_temp_dir() . '/' . $file['name'];
             copy($dir . '/' . $filename, $file['tmp_name']);
             $attachment_id = media_handle_sideload($file, $this->ID, NULL, [
               'guid' => $guid,
@@ -390,7 +387,7 @@ abstract class Post {
       if ($post_content_before !== $this->post_content) {
         $result = wp_update_post($this->wp_post, TRUE);
         if ($result instanceof \WP_Error) {
-          throw new \RuntimeException('Failed to update post after embedding images: ' . implode(', ', $result->get_error_messages()));
+          throw new \RuntimeException(sprintf('Failed to update post ID %d after embedding images: %s', $this->wp_post->ID, implode(', ', $result->get_error_messages())));
         }
       }
     }

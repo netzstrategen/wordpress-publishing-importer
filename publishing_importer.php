@@ -2,7 +2,7 @@
 
 /*
   Plugin Name: Publishing Importer
-  Version: 1.1.0
+  Version: 1.2.0
   Text Domain: publishing_importer
   Description: Imports content from publishing industry content management systems.
   Author: Daniel F. Kudwien (sun)

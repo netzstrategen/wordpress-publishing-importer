@@ -31,7 +31,12 @@ class CliCommand extends \WP_CLI_Command {
     }
     try {
       Plugin::importContent($options);
-      \WP_CLI::success('Articles has been sucessfully processed.');
+      if (isset($options['type'])) {
+        \WP_CLI::success("Import of type $options[type] completed.");
+      }
+      else {
+        \WP_CLI::success("Import completed.");
+      }
     }
     catch (\Exception $e) {
       \WP_CLI::error($e->getMessage());
