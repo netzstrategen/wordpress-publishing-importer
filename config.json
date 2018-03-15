@@ -1,4 +1,17 @@
 {
+  "dpa": {
+    "publisher": "dpa",
+    "system": "weblines",
+    "types": {
+      "article": {
+        "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Dpa\\Article",
+        "directory": "../ftp/dpa/dpa-infoline/generatedSite",
+        "media": ""
+      }
+    },
+    "uploadsPrefix": "dpa-",
+    "defaultAuthor": "redaktion"
+  },
   "ge": {
     "publisher": "grenzecho",
     "system": "dialog",
