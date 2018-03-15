@@ -348,7 +348,7 @@ abstract class Post {
         $i = 0;
         foreach ($this->files as $filename => $file) {
           $i++;
-          $orig_filename = $filename;
+          $orig_filename = basename($filename);
           $file += ['caption' => ''];
           if (!file_exists($dir . '/' . $filename)) {
             // Try to decode a filename containing hex-encoded characters beyond ASCII.
@@ -368,11 +368,13 @@ abstract class Post {
           }
           $attachment_id = NULL;
           $guid = 'http://' . $this->config['publisher'] . '/' . $this->config['system'] . '/' . $filename;
+          $attachment_meta = array_diff_key($file, ['filename' => 0, 'tmp_name' => 0, 'name' => 0, 'caption' => 0, 'credit' => 0]);
           if ($attachment = static::loadByGuid($guid)) {
             $attachment_id = $attachment->ID;
             wp_update_post([
               'ID' => $attachment_id,
               'post_excerpt' => !empty($file['caption']) ? $file['caption'] : '',
+              'meta_input' => $attachment_meta,
             ]);
           }
           elseif (file_exists($dir . '/' . $filename)) {
@@ -384,6 +386,7 @@ abstract class Post {
               'guid' => $guid,
               'post_title' => $orig_filename,
               'post_excerpt' => $file['caption'],
+              'meta_input' => $attachment_meta,
             ]);
             if ($attachment_id instanceof \WP_Error) {
               $attachment_id = NULL;
