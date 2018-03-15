@@ -178,7 +178,8 @@ abstract class Post {
       self::$wp_post_class_vars = array_fill_keys(array_keys(get_class_vars('\WP_Post')), 1) + [
         'post_category' => 1, // insert + update + __isset + __get + to_array
         'tags_input' => 1, // insert + __isset + __get  + to_array
-        'tax_input' => 1, // insert only
+        'tax_input' => 1, // requires user session with administrative privileges + term IDs for hierarchical taxonomies
+        'meta_input' => 1,
         'import_id' => 1, // insert ("suggested post ID for newly imported posts, if not exists")
         'edit_date' => 1, // @see wp_update_post()
       ];
@@ -196,7 +197,6 @@ abstract class Post {
     if (isset($raw)) {
       $this->setRaw($raw);
     }
-    $this->meta['_publisher'] = $config['publisher'];
   }
 
   /**
@@ -311,8 +311,12 @@ abstract class Post {
     // Prevent API functions from resetting the specified post_date.
     $this->edit_date = TRUE;
 
+    $this->meta['_publishing_importer_raw'] = $this->raw;
+
+    $post_array = get_object_vars($this->wp_post);
+    $post_array['meta_input'] = $this->meta;
+
     if (empty($this->ID)) {
-      $post_array = get_object_vars($this->wp_post);
       $result = wp_insert_post($post_array, TRUE);
       if ($result instanceof \WP_Error) {
         throw new \RuntimeException('Failed to insert post: ' . implode(', ', $result->get_error_messages()));
@@ -320,13 +324,16 @@ abstract class Post {
       $this->ID = $result;
     }
     else {
-      $result = wp_update_post($this->wp_post, TRUE);
+      $result = wp_update_post($post_array, TRUE);
       if ($result instanceof \WP_Error) {
         throw new \RuntimeException('Failed to update post: ' . implode(', ', $result->get_error_messages()));
       }
     }
+    // tax_input exists, but requires a user session with administrative privileges
+    // and to pass term IDs for hierarchical taxonomies. However, we do not support
+    // duplicate terms (under different parents) in the same taxonomy and we do not
+    // need the additional validation of user input, so we assign terms separately.
     foreach ($this->taxonomies as $taxonomy => $terms) {
-      //wp_set_post_terms($this->ID, $terms, $taxonomy, FALSE);
       wp_set_object_terms($this->ID, $terms, $taxonomy, FALSE);
     }
 
@@ -401,10 +408,6 @@ abstract class Post {
           throw new \RuntimeException(sprintf('Failed to update post ID %d after embedding images: %s', $this->wp_post->ID, implode(', ', $result->get_error_messages())));
         }
       }
-    }
-    $this->meta['_publishing_importer_raw'] = $this->raw;
-    foreach ($this->meta as $key => $value) {
-      update_post_meta($this->ID, $key, is_string($value) ? wp_slash($value) : $value);
     }
   }
 

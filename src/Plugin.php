@@ -117,6 +117,13 @@ class Plugin {
    *   - only_article_filename: The article filename to import; e.g. '123456.xml'.
    */
   public static function importContent($args = []) {
+    // The import needs to be launched with administrative privileges, because
+    // WordPress Core and third party plugins are testing user privileges even in
+    // internal API functions.
+    if (!current_user_can('manage_categories')) {
+      static::error('Unable to import due to missing user session (missing administrative privileges). Hint: --user=system', 127);
+    }
+
     $args += [
       'only_publisher_id' => NULL,
       'only_article_filename' => NULL,
