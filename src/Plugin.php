@@ -20,6 +20,13 @@ class Plugin {
   const L10N = 'publishing_importer';
 
   /**
+   * User role name for users whose subscription expired.
+   *
+   * @var string
+   */
+  const ROLE_EXSUBSCRIBER = 'ex-subscriber';
+
+  /**
    * @var string
    */
   private static $baseUrl;
@@ -30,9 +37,15 @@ class Plugin {
   public static $importFileHandle;
 
   /**
+   * @var bool
+   */
+  public static $redirectAllMails = FALSE;
+
+  /**
    * @implements init
    */
   public static function init() {
+    add_filter('wp_mail', __CLASS__ . '::wp_mail');
     if (is_admin() || defined('WP_CLI')) {
       return;
     }
@@ -147,8 +160,25 @@ class Plugin {
       }
     }
 
+    // Allow to create users without email addresses and skip duplicate email check.
+    define('WP_IMPORTING', TRUE);
+
+    // Disable notification emails from wp_update_user() and redirect any
+    // remaining mails to site administrator.
+    add_filter('send_password_change_email', '__return_false', 100);
+    add_filter('send_email_change_email', '__return_false', 100);
+    static::$redirectAllMails = TRUE;
+
+    // Ensure all dates and times are calculated based on this site's timezone.
+    $original_timezone = date_default_timezone_get();
+    date_default_timezone_set(get_option('timezone_string'));
+
     foreach ($config as $publisher_config) {
       foreach ($publisher_config['types'] as $type => $type_config) {
+        if (method_exists($type_config['parserClass'], 'beforeImport')) {
+          $type_config['parserClass']::beforeImport();
+        }
+
         $extension = '.' . $type_config['parserClass']::FILE_EXTENSION;
         if ($only_article_filename) {
           static::importOne($publisher_config, $type, $type_config['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
@@ -186,8 +216,18 @@ class Plugin {
             throw new \LogicException("No file import handler for extension $extension");
           }
         }
+
+        if (method_exists($type_config['parserClass'], 'afterImport')) {
+          $type_config['parserClass']::afterImport();
+        }
       }
     }
+
+    remove_filter('send_password_change_email', '__return_false', 100);
+    remove_filter('send_email_change_email', '__return_false', 100);
+    static::$redirectAllMails = FALSE;
+
+    date_default_timezone_set($original_timezone);
   }
 
   public static function importOne($publisher_config, $type, $pathname, $raw_filename) {
@@ -265,6 +305,19 @@ class Plugin {
         exit($exit_code);
       }
     }
+  }
+
+  /**
+   * Redirects emails to configured site administrator email.
+   */
+  public static function wp_mail(array $message) {
+    if (static::$redirectAllMails) {
+      $admin_email = get_option('admin_email', 'service@netzstrategen.com');
+      $to_parts = explode('@', $admin_email);
+      $alias = preg_replace('@[^a-zA-Z0-9_-]@', '-', $message['to']);
+      $message['to'] = $to_parts[0] . '+' . $alias . '@' . $to_parts[1];
+    }
+    return $message;
   }
 
   /**
