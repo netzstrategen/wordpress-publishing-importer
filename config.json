@@ -12,6 +12,20 @@
     "uploadsPrefix": "dpa-",
     "defaultAuthor": "redaktion"
   },
+  "alfa": {
+    "publisher": "alfa",
+    "system": "subscriptions",
+    "types": {
+      "epaper": {
+        "parserClass": "\\Netzstrategen\\PublishingImporter\\Parser\\Alfa\\Subscription",
+        "directory": "../ftp/alfa",
+        "file": "abonnenten.xml",
+        "xpath": "//Abonnent",
+        "sku": "digital-epaper-import"
+      }
+    },
+    "defaultAuthor": "system"
+  },
   "ge": {
     "publisher": "grenzecho",
     "system": "dialog",

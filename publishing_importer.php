@@ -2,7 +2,7 @@
 
 /*
   Plugin Name: Publishing Importer
-  Version: 1.7.0
+  Version: 1.8.0
   Text Domain: publishing_importer
   Description: Imports content from publishing industry content management systems.
   Author: Daniel F. Kudwien (sun)
@@ -36,7 +36,7 @@ register_activation_hook(__FILE__, __NAMESPACE__ . '\Schema::activate');
 register_deactivation_hook(__FILE__, __NAMESPACE__ . '\Schema::deactivate');
 register_uninstall_hook(__FILE__, __NAMESPACE__ . '\Schema::uninstall');
 
-add_action('plugins_loaded', __NAMESPACE__ . '\Plugin::loadTextdomain');
+add_action('plugins_loaded', __NAMESPACE__ . '\Plugin::plugins_loaded');
 add_action('init', __NAMESPACE__ . '\Plugin::init', 30);
 add_action('admin_init', __NAMESPACE__ . '\Admin::init');
 

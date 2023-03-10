@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: publishing_importer\n"
-"POT-Creation-Date: 2015-12-29 20:52+0100\n"
-"PO-Revision-Date: 2015-12-29 21:00+0100\n"
+"POT-Creation-Date: 2016-03-22 11:25+0100\n"
+"PO-Revision-Date: 2016-03-22 11:26+0100\n"
 "Last-Translator: sun <daniel@netzstrategen.com>\n"
 "Language-Team: netzstrategen\n"
 "Language: de_DE\n"
@@ -47,9 +47,18 @@ msgctxt "Paraph"
 msgid "Author Initials"
 msgstr "Autor Paraphen"
 
+#: src/Schema.php:44
+msgid "Ex-Subscriber"
+msgstr "Ex-Abonnent"
+
 #: src/User.php:34
 msgid "Enter one paraph (short signature) per line."
 msgstr "Eine Paraphe (Initialien) pro Zeile eingeben."
 
-#~ msgid "Test"
-#~ msgstr "Translated Test"
+#: src/Term.php:30 src/Term.php:48
+msgid "Synonyms"
+msgstr "Synonyme"
+
+#: src/Term.php:32 src/Term.php:51
+msgid "List one synonym per line"
+msgstr "Je Zeile ein Synonym auflisten"

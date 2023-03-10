@@ -7,6 +7,8 @@
 
 namespace Netzstrategen\PublishingImporter;
 
+use Netzstrategen\PublishingImporter\ResetPasswordEmail;
+
 /**
  * Main front-end functionality.
  */
@@ -344,9 +346,19 @@ class Plugin {
 
   /**
    * Loads the plugin textdomain.
+   *
+   * @implements plugins_loaded
    */
-  public static function loadTextdomain() {
+  public static function plugins_loaded() {
     load_plugin_textdomain(static::L10N, FALSE, strtr(static::L10N, '_', '-') . '/languages/');
+
+    // Register password_updated WooCommerce email template.
+    add_filter('woocommerce_email_actions', __CLASS__ . '::woocommerce_email_actions');
+    add_filter('woocommerce_email_classes', __CLASS__ . '::woocommerce_email_classes');
+    add_filter('woocommerce_email_customizer_plus_supported_email_templates', function ($templates) {
+      $templates[] = 'ResetPasswordEmail';
+      return $templates;
+    });
   }
 
   /**
@@ -368,6 +380,22 @@ class Plugin {
    */
   public static function getBasePath() {
     return dirname(__DIR__);
+  }
+
+  /**
+   * @implements woocommerce_email_actions
+   */
+  public static function woocommerce_email_actions($actions) {
+    $actions[] = 'imported_subscriber_password_updated';
+    return $actions;
+  }
+
+  /**
+   * @implements woocommerce_email_classes
+   */
+  public static function woocommerce_email_classes($classes) {
+    $classes['ResetPasswordEmail'] = new ResetPasswordEmail();
+    return $classes;
   }
 
 }
