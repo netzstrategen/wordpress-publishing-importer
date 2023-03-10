@@ -47,6 +47,22 @@ class Article extends Post {
     return parent::createFromFile($config, $pathname, $raw_filename);
   }
 
+  public function isPristine() {
+    global $wpdb;
+    if (empty($this->ID)) {
+      return TRUE;
+    }
+    $uid_system = $wpdb->get_var("SELECT ID FROM {$wpdb->users} WHERE user_login = 'system' LIMIT 0,1");
+    $last_modified_by = $wpdb->get_var($wpdb->prepare("SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = '_edit_last' ORDER BY meta_id DESC LIMIT 0,1", $this->ID));
+    // Any other last editor that 0 or ID of user 'system' means that the post
+    // was edited from another user. The query can also return NULL (if the post
+    // was never updated), but the first condition matches both 0 and NULL.
+    if ($last_modified_by != 0 && $last_modified_by != $uid_system) {
+      return FALSE;
+    }
+    return TRUE;
+  }
+
   public function parse() {
     $xml = simplexml_load_string($this->raw);
 
