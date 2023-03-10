@@ -89,6 +89,8 @@ class Article extends Post {
   }
 
   public function parseMeta(\SimpleXMLElement $xml) {
+    global $wpdb;
+
     // @todo Do we need to strip the (category) suffix from the filename for uniqueness?
     //$article_id = preg_replace('/[_:].*/', '', $this->rawFilename);
     $article_id = $this->rawFilename;
@@ -125,6 +127,25 @@ class Article extends Post {
     if ($tags = $xml->xpath('//keyword/@key')) {
       $tags = (string) $tags[0];
       $this->taxonomies['post_tag'] = array_filter(explode('/', $tags));
+
+      $query = "SELECT t.name, t.term_id, tm.meta_key
+        FROM {$wpdb->terms} t
+        LEFT JOIN {$wpdb->termmeta} tm ON tm.term_id = t.term_id
+        LEFT JOIN {$wpdb->term_taxonomy} tt ON tt.term_id = t.term_id
+        WHERE tm.meta_key = '_publishing_importer_synonyms'
+        GROUP BY t.term_id";
+      $results = $wpdb->get_results($query);
+
+      foreach ($results as $term) {
+        $synonyms = get_term_meta($term->term_id, '_publishing_importer_synonyms', FALSE);
+        $matching_keys = array_intersect($this->taxonomies['post_tag'], $synonyms);
+
+        if (count($matching_keys) === count($synonyms) - 1) {
+          if (in_array($category, $synonyms)) {
+            $this->taxonomies['category'][$term->name] = (int) $term->term_id;
+          }
+        }
+      }
     }
 
     if ($urgency = $xml->xpath('//urgency/@ed-urg')) {
