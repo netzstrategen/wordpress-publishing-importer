@@ -346,19 +346,16 @@ abstract class Post {
     $post_array = get_object_vars($this->wp_post);
     $post_array['meta_input'] = $this->meta;
 
-    if (empty($this->ID)) {
-      $result = wp_insert_post($post_array, TRUE);
+    $is_new = empty($this->ID);
+
+    if ($is_new) {
+      $result = static::wp_insert_post($post_array);
       if ($result instanceof \WP_Error) {
         throw new \RuntimeException('Failed to insert post: ' . implode(', ', $result->get_error_messages()));
       }
       $this->ID = $result;
     }
-    else {
-      $result = wp_update_post($post_array, TRUE);
-      if ($result instanceof \WP_Error) {
-        throw new \RuntimeException('Failed to update post: ' . implode(', ', $result->get_error_messages()));
-      }
-    }
+
     // tax_input exists, but requires a user session with administrative privileges
     // and to pass term IDs for hierarchical taxonomies. However, we do not support
     // duplicate terms (under different parents) in the same taxonomy and we do not
@@ -367,12 +364,13 @@ abstract class Post {
       wp_set_object_terms($this->ID, $terms, $taxonomy, FALSE);
     }
 
+    $post_content_before = $this->post_content;
+
     if (!empty($this->files)) {
       require_once ABSPATH . 'wp-admin/includes/media.php';
       require_once ABSPATH . 'wp-admin/includes/file.php';
       require_once ABSPATH . 'wp-admin/includes/image.php';
 
-      $post_content_before = $this->post_content;
       foreach ($this->config['types'] as $type => $type_config) {
         $dir = $type_config['media'];
         $i = 0;
@@ -439,14 +437,38 @@ abstract class Post {
           $this->organizeAttachments($attachment_ids);
         }
       }
-      // Update post_content to replace/remove image placeholder strings.
-      if ($post_content_before !== $this->post_content) {
-        $result = wp_update_post($this->wp_post, TRUE);
-        if ($result instanceof \WP_Error) {
-          throw new \RuntimeException(sprintf('Failed to update post ID %d after embedding images: %s', $this->wp_post->ID, implode(', ', $result->get_error_messages())));
-        }
+    }
+
+    if (!$is_new || $post_content_before !== $this->post_content) {
+      $result = static::wp_update_post($post_array);
+      if ($result instanceof \WP_Error) {
+        throw new \RuntimeException(sprintf('Failed to update post ID %d after embedding images: %s', $this->wp_post->ID, implode(', ', $result->get_error_messages())));
       }
     }
+  }
+
+  /**
+   * Inserts a post.
+   *
+   * @param array $post_array
+   *   An array of elements that make up a post to update or insert.
+   *
+   * @see wp_insert_post()
+   */
+  protected function wp_insert_post(array $post_array) {
+    return wp_insert_post($post_array, TRUE);
+  }
+
+  /**
+   * Updates a post.
+   *
+   * @param array $post_array
+   *   An array of elements that make up a post to update or insert.
+   *
+   * @see wp_update_post()
+   */
+  protected function wp_update_post(array $post_array) {
+    return wp_update_post($post_array, TRUE);
   }
 
   /**
