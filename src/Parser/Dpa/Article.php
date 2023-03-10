@@ -148,6 +148,15 @@ class Article extends Post {
       }
     }
 
+    // Support for dpa-regioline articles.
+    if ($xml->xpath('//fixture[@fix-id="/regiolinegeo/badenwuerttemberg/"]')) {
+      $this->taxonomies['category'] = ['Südwestecho'];
+      if (!$this->ID) {
+        $this->post_author = username_exists('dpa-lsw');
+        $this->post_status = 'pending';
+      }
+    }
+
     if ($urgency = $xml->xpath('//urgency/@ed-urg')) {
       $this->meta['urgency'] = (string) $urgency[0];
     }
