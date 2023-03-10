@@ -83,7 +83,7 @@ class Article extends Post {
     }
 
     // Posts without any images should be reviewed before getting published.
-    if (empty($this->files)) {
+    if (empty($this->files) && $this->post_status !== 'publish') {
       $this->post_status = 'pending';
     }
   }
@@ -100,7 +100,9 @@ class Article extends Post {
       $this->post_date = date('Y-m-d H:i:s', strtotime((string) $post_date[0]));
     }
 
-    $this->post_author = username_exists('dpa');
+    if (!$this->ID) {
+      $this->post_author = username_exists('dpa');
+    }
 
     $title = $xml->xpath('//hedline/hl1');
     $this->post_title = $title ? (string) $title[0] : '';
