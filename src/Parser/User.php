@@ -115,6 +115,17 @@ abstract class User extends \WP_User {
   }
 
   /**
+   * Returns whether the user has status trash.
+   * As there is no equivalent to the post status, return value is always FALSE.
+   *
+   * @return bool
+   *   TRUE if status is trash, FALSE otherwise.
+   */
+  public function isTrashed() {
+      return FALSE;
+  }
+
+  /**
    * Returns whether the stored raw content is different from the original file's raw content.
    *
    * @return bool
@@ -132,6 +143,16 @@ abstract class User extends \WP_User {
 //      echo $new_raw, "\n\n";
 //    }
     return $new_raw !== $old_raw;
+  }
+
+  /**
+   * Returns whether the user was deleted.
+   *
+   * @return bool
+   *   TRUE in case the post was deleted
+   */
+  public function isDeleted() {
+    return FALSE;
   }
 
   /**

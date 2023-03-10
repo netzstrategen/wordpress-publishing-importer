@@ -19,7 +19,7 @@ class Article extends Post {
 
   const FILE_EXTENSION = 'xml';
 
-  public static function createFromFile(array $config, $pathname, $raw_filename = NULL) {
+  public static function createFromFile(array $config, $pathname, &$raw_filename = NULL) {
     if (strpos($raw_filename, 'topthemen') && !strpos($raw_filename, 'hintergruende')) {
       Plugin::debug("Skipped (duplicate) 'topthemen' article $raw_filename");
       return;

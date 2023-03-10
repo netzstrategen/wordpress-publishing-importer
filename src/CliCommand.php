@@ -7,7 +7,7 @@ class CliCommand extends \WP_CLI_Command {
    * Imports articles via publishing-importer plugin.
    *
    * @see Netzstrategen\PublishingImporter\Plugin::importContent()
-   * @synopsis [--type=<type>] [--dir=<directorypath>] [--publisher=<ge>] [--filename=<filename>]
+   * @synopsis [--type=<type>] [--dir=<directorypath>] [--publisher=<ge>] [--filename=<filename>] [--force]
    */
   public function import(array $args, array $options) {
     if (isset($options['publisher'])) {

@@ -7,6 +7,8 @@
 
 namespace Netzstrategen\PublishingImporter\Parser;
 
+use Netzstrategen\PublishingImporter\Plugin;
+
 /**
  * Smarter post class for publishing system imports.
  *
@@ -100,7 +102,7 @@ abstract class Post {
    *
    * @return static
    */
-  public static function createFromFile(array $config, $pathname, $raw_filename = NULL) {
+  public static function createFromFile(array $config, $pathname, &$raw_filename = NULL) {
     global $wpdb;
     $raw = static::readFile($pathname);
     $wp_post = [];
@@ -150,7 +152,7 @@ abstract class Post {
    * @param string $guid
    *   The GUID to look up.
    *
-   * @return \WP_Post|null
+   * @return \WP_Post|NULL
    */
   public static function loadByGuid($guid) {
     global $wpdb;
@@ -274,6 +276,19 @@ abstract class Post {
   }
 
   /**
+   * Returns whether the post has "trash" status.
+   *
+   * @return bool
+   *   TRUE if status is "trash", FALSE otherwise.
+   */
+  public function isTrashed() {
+    if (empty($this->ID)) {
+      return FALSE;
+    }
+    return $this->wp_post->post_status === 'trash';
+  }
+
+  /**
    * Returns whether the stored raw content is different from the original file's raw content.
    *
    * @return bool
@@ -284,7 +299,22 @@ abstract class Post {
       return TRUE;
     }
     $old_raw = $wpdb->get_var($wpdb->prepare("SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = '_publishing_importer_raw' ORDER BY meta_id DESC LIMIT 0,1", $this->ID));
+
+    if (static::FILE_EXTENSION === 'csv' && !empty($old_raw) && $old_raw[0] === 'a' && $old_raw[1] === ':') {
+      $old_raw = unserialize($old_raw);
+    }
+
     return $this->raw !== $old_raw;
+  }
+
+  /**
+   * Returns whether the post was deleted.
+   *
+   * @return bool
+   *   TRUE in case the post was deleted
+   */
+  public function isDeleted() {
+    return FALSE;
   }
 
   /**

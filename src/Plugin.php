@@ -142,6 +142,7 @@ class Plugin {
       'only_article_filename' => NULL,
       'config_overrides' => [],
       'type' => NULL,
+      'force' => FALSE,
     ];
     $only_publisher_id = $args['only_publisher_id'];
     $only_article_filename = $args['only_article_filename'];
@@ -176,49 +177,60 @@ class Plugin {
     foreach ($config as $publisher_config) {
       foreach ($publisher_config['types'] as $type => $type_config) {
         if (method_exists($type_config['parserClass'], 'beforeImport')) {
-          $type_config['parserClass']::beforeImport();
+          $type_config['parserClass']::beforeImport($type_config);
         }
 
         $extension = '.' . $type_config['parserClass']::FILE_EXTENSION;
         if ($only_article_filename) {
-          static::importOne($publisher_config, $type, $type_config['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension));
+          static::importOne($publisher_config, $type, $type_config['directory'] . '/' . $only_article_filename, basename($only_article_filename, $extension), $args['force']);
           break;
         }
-        if (!isset($type_config['file'])) {
-          if (!empty($type_config['recursive'])) {
-            $directory = new \RecursiveDirectoryIterator($type_config['directory'], \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS | \FilesystemIterator::FOLLOW_SYMLINKS);
-            $filter = new \RecursiveCallbackFilterIterator($directory, [$type_config['parserClass'], 'recursiveCallbackFilter']);
-            $git = new \RecursiveIteratorIterator($filter);
-            $git = $type_config['parserClass']::beforeRecurse($git);
-          }
-          else {
-            $glob = $type_config['directory'] . '/*' . $extension;
-            $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
-          }
-          foreach ($git as $pathname => $fileinfo) {
-            static::importOne($publisher_config, $type, $pathname, $fileinfo->getBasename($extension));
-          }
-        }
-        else {
-          $pathname = $type_config['file'];
-          if ($extension === '.csv') {
-            static::$importFileHandle = fopen($pathname, 'r');
-            while (!feof(static::$importFileHandle) && FALSE !== static::importOne($publisher_config, $type, $pathname, basename($pathname, $extension))) {
-            }
-            fclose(static::$importFileHandle);
-          }
-          elseif ($extension === '.json') {
-            static::$importFileHandle = json_decode(file_get_contents($pathname), TRUE);
-            while (FALSE !== static::importOne($publisher_config, $type, $pathname, basename($pathname, $extension))) {
-            }
-          }
-          else {
-            throw new \LogicException("No file import handler for extension $extension");
-          }
-        }
 
-        if (method_exists($type_config['parserClass'], 'afterImport')) {
-          $type_config['parserClass']::afterImport();
+        try {
+          if (!isset($type_config['file'])) {
+            if (!empty($type_config['recursive'])) {
+              $directory = new \RecursiveDirectoryIterator($type_config['directory'], \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS | \FilesystemIterator::FOLLOW_SYMLINKS);
+              $filter = new \RecursiveCallbackFilterIterator($directory, [$type_config['parserClass'], 'recursiveCallbackFilter']);
+              $git = new \RecursiveIteratorIterator($filter);
+              $git = $type_config['parserClass']::beforeRecurse($git);
+            }
+            else {
+              $glob = $type_config['directory'] . '/*' . $extension;
+              $git = new \GlobIterator($glob, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS);
+            }
+            foreach ($git as $pathname => $fileinfo) {
+              static::importOne($publisher_config, $type, $pathname, $fileinfo->getBasename($extension), $args['force']);
+            }
+          }
+          else {
+            $pathname = $type_config['file'];
+            if ($extension === '.csv') {
+              static::$importFileHandle = fopen($pathname, 'r');
+              while (!feof(static::$importFileHandle) && FALSE !== static::importOne($publisher_config, $type, $pathname, basename($pathname, $extension), $args['force'])) {
+              }
+              fclose(static::$importFileHandle);
+            }
+            elseif ($extension === '.json') {
+              static::$importFileHandle = json_decode(file_get_contents($pathname), TRUE);
+              while (FALSE !== static::importOne($publisher_config, $type, $pathname, basename($pathname, $extension), $args['force'])) {
+              }
+            }
+            elseif ($extension === '.xml') {
+              static::$importFileHandle = simplexml_load_file($type_config['file'])->xpath($type_config['xpath']);
+              while (FALSE !== static::importOne($publisher_config, $type, $pathname, basename($pathname, $extension), $args['force'])) {
+              }
+            }
+            else {
+              throw new \LogicException("No file import handler for extension $extension");
+            }
+          }
+
+          if (method_exists($type_config['parserClass'], 'afterImport')) {
+            $type_config['parserClass']::afterImport($type_config);
+          }
+        }
+        catch (\Exception $e) {
+          static::error($e);
         }
       }
     }
@@ -230,19 +242,29 @@ class Plugin {
     date_default_timezone_set($original_timezone);
   }
 
-  public static function importOne($publisher_config, $type, $pathname, $raw_filename) {
-    try {
-      $type_config = $publisher_config['types'][$type];
-      $entity_noun = ucfirst($type);
-      $entity = $type_config['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
-      if (!$entity instanceof $type_config['parserClass']) {
-        return $entity;
-      }
-      if ($entity->isPristine()) {
-        if ($entity->isRawDifferent()) {
-          $entity->parse();
-          $entity->save();
-          static::notice("Processed $type $raw_filename (ID $entity->ID).");
+  public static function importOne($publisher_config, $type, $pathname, $raw_filename, $force = FALSE) {
+    $type_config = $publisher_config['types'][$type];
+    $entity_noun = ucfirst($type);
+    $entity = $type_config['parserClass']::createFromFile($publisher_config, $pathname, $raw_filename);
+    if (!$entity instanceof $type_config['parserClass']) {
+      return $entity;
+    }
+    if ($force || !$entity->isDeleted()) {
+      if ($force || ($entity->isPristine() && !$entity->isTrashed())) {
+        if ($force || $entity->isRawDifferent()) {
+          if ($entity->parse() !== FALSE) {
+            try {
+              $entity->save();
+              static::notice("Processed $type $raw_filename (ID $entity->ID).");
+            }
+            catch (\Throwable $e) {
+              // Log an error and continue with the next dataset.
+              static::error($e);
+            }
+          }
+          else {
+            static::debug("Skipped $type $raw_filename.");
+          }
         }
         else {
           static::debug("$entity_noun $raw_filename (ID $entity->ID) is same as original.");
@@ -252,8 +274,8 @@ class Plugin {
         static::notice("$entity_noun $raw_filename (ID $entity->ID) has been manually edited.");
       }
     }
-    catch (\Exception $e) {
-      static::error($e);
+    else {
+      static::notice("$entity_noun $raw_filename (ID $entity->ID) has been deleted.");
     }
   }
 
